@@ -140,10 +140,10 @@ def run_eval(
 ) -> EvalReport:
     examples = load_fixtures(path)
     if classify is None:
-        from kill_scam.classifier import classify_message
+        from kill_scam.agent import classify_message
 
         def classify(message: str) -> CheckResult:
-            return classify_message(message, source="eval")
+            return classify_message(message, source="eval", allow_search=False)
 
     predictions = [classify(example.message).verdict for example in examples]
     return score_predictions(examples, predictions)
@@ -168,7 +168,7 @@ def format_report(report: EvalReport) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    from kill_scam.config import load_env, openai_api_key
+    from kill_scam.config import load_env
 
     load_env()
     parser = argparse.ArgumentParser(
@@ -184,17 +184,10 @@ def main(argv: list[str] | None = None) -> int:
 
     examples = load_fixtures(args.fixtures)
     print(f"Loaded {len(examples)} synthetic fixtures from {args.fixtures or fixture_path()}")
-
-    if not openai_api_key():
-        print(
-            "OPENAI_API_KEY is not set, so live scoring was skipped.\n"
-            "Fixture structure is OK. Add a key and rerun to score the real checker."
-        )
-        return 0
-
+    print("Scoring the local five-step checklist (no live web search).")
     report = run_eval(path=args.fixtures)
     print(format_report(report))
-    return 0
+    return 1 if report.missed_scams else 0
 
 
 if __name__ == "__main__":

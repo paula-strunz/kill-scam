@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from kill_scam.classifier import classify_message, parse_verdict
-from kill_scam.models import CheckError, MissingApiKeyError
+from kill_scam.agent import classify_message, parse_verdict
+from kill_scam.models import STEP_IDS, CheckError
 
 
 def test_parse_plain_json() -> None:
@@ -75,10 +75,14 @@ def test_empty_paste_does_not_need_api_key(monkeypatch: pytest.MonkeyPatch) -> N
         classify_message("   ")
 
 
-def test_missing_api_key_is_clear(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_checklist_runs_without_openai_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    with pytest.raises(MissingApiKeyError, match="OpenAI key"):
-        classify_message("Please send gift cards today or your account closes.")
+    result = classify_message(
+        "Please send gift cards today or your account closes. Do not tell anyone.",
+        allow_search=False,
+    )
+    assert result.verdict in {"suspicious", "likely_scam"}
+    assert [step.id for step in result.steps] == list(STEP_IDS)
 
 
 def test_message_too_long(monkeypatch: pytest.MonkeyPatch) -> None:

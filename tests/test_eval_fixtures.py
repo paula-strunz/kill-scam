@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from kill_scam.domains import all_official_domains, is_official_host
 from kill_scam.evals import (
     GOLD_HAM,
     GOLD_SCAM,
@@ -40,7 +41,11 @@ def test_fixtures_are_synthetic_without_pii() -> None:
     assert SSN.search(blob) is None
     assert PHONE.search(blob) is None
     for match in re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", blob):
-        assert any(match.lower().endswith(domain) for domain in ALLOWED_TEST_DOMAINS)
+        domain = match.split("@", 1)[1].lower()
+        allowed = any(domain.endswith(item) for item in ALLOWED_TEST_DOMAINS)
+        official = is_official_host(domain, all_official_domains())
+        synthetic_lookalike = domain in {"impots-gouv.fr"}
+        assert allowed or official or synthetic_lookalike, match
 
 
 def test_fixture_file_has_arize_shaped_columns() -> None:
@@ -107,6 +112,8 @@ def test_run_eval_with_stub_classifier() -> None:
         "Mom its me",
         "release fee",
         "parcel-redelivery-login.test",
+        "impots-gouv.fr",
+        "chronopost.fr.suivi-colis.test",
     )
 
     def stub(message: str) -> CheckResult:
@@ -114,6 +121,19 @@ def test_run_eval_with_stub_classifier() -> None:
         return CheckResult(verdict=verdict, summary="stub", reasons=["stub"], advice="stub")
 
     report = run_eval(classify=stub)
-    assert report.total == 12
+    assert report.total == len(load_fixtures())
     assert report.missed_scams == 0
     assert report.false_alarms == 0
+
+
+def test_local_checklist_eval_has_no_missed_scams() -> None:
+    from kill_scam.evals import run_eval
+
+    report = run_eval()
+    assert report.total == len(load_fixtures())
+    assert report.missed_scams == 0
+    assert report.false_alarms == 0
+    lookalike = next(row for row in report.rows if row.example.id == "scam-lookalike-impots")
+    assert lookalike.caught_scam
+    bank = next(row for row in report.rows if row.example.id == "ham-bank-statement-official")
+    assert bank.true_ham

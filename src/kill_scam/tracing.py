@@ -1,7 +1,13 @@
-"""Arize AX tracing. Fail gracefully when keys are missing."""
+"""Arize AX tracing. Fail gracefully when keys are missing.
+
+Parent check is a CHAIN span. Each checklist step is a child TOOL span.
+Inputs/outputs are summaries plus a message hash — not the pasted body.
+"""
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -12,6 +18,10 @@ from kill_scam.config import PROJECT_NAME, arize_api_key, arize_is_configured, a
 logger = logging.getLogger("kill_scam")
 
 _STATE: dict[str, object] = {"tried": False, "enabled": False}
+
+
+def message_fingerprint(text: str) -> str:
+    return hashlib.sha256((text or "").encode("utf-8")).hexdigest()[:16]
 
 
 def tracing_enabled() -> bool:
@@ -52,12 +62,7 @@ def init_tracing() -> bool:
 
 
 @contextmanager
-def start_check_span(source: str, message_length: int) -> Iterator[Any]:
-    """Open a CHAIN span for one check. No-ops if tracing is off.
-
-    The message body is not printed to the console. If Arize is on, the OpenAI
-    instrumentor may send prompt text to the user's own Arize space.
-    """
+def start_check_span(source: str, message_length: int, message_hash: str = "") -> Iterator[Any]:
     if not tracing_enabled():
         yield None
         return
@@ -79,9 +84,50 @@ def start_check_span(source: str, message_length: int) -> Iterator[Any]:
             )
             span.set_attribute("check.source", source)
             span.set_attribute("check.message_length", message_length)
+            span.set_attribute("check.message_hash", message_hash)
+            span.set_attribute(SpanAttributes.INPUT_VALUE, f"hash={message_hash} length={message_length}")
         except Exception:
             pass
         yield span
+
+
+@contextmanager
+def start_tool_span(name: str, input_summary: dict[str, object]) -> Iterator[Any]:
+    if not tracing_enabled():
+        yield None
+        return
+
+    try:
+        from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
+        from opentelemetry import trace
+
+        tracer = trace.get_tracer(PROJECT_NAME)
+    except Exception:
+        yield None
+        return
+
+    with tracer.start_as_current_span(name) as span:
+        try:
+            span.set_attribute(
+                SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                OpenInferenceSpanKindValues.TOOL.value,
+            )
+            span.set_attribute(SpanAttributes.TOOL_NAME, name)
+            span.set_attribute(SpanAttributes.INPUT_VALUE, json.dumps(input_summary, ensure_ascii=True))
+        except Exception:
+            pass
+        yield span
+
+
+def record_tool_output(span: Any, output_summary: dict[str, object]) -> None:
+    if span is None:
+        return
+    try:
+        from openinference.semconv.trace import SpanAttributes
+
+        span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(output_summary, ensure_ascii=True))
+    except Exception:
+        return
 
 
 def record_verdict(verdict: str) -> None:

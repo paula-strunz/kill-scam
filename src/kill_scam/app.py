@@ -1,15 +1,23 @@
-"""Kill Scam home screen. Big type, obvious paste box, no jargon."""
+"""Kill Scam home screen. The product is the five-step checklist."""
 
 from __future__ import annotations
 
 import logging
+import time
 
 import streamlit as st
 
 from kill_scam import gmail as gmail_client
-from kill_scam.classifier import classify_message
+from kill_scam.agent import iter_checklist
 from kill_scam.config import load_env
-from kill_scam.models import VERDICT_LABELS, CheckError, CheckResult, MissingApiKeyError
+from kill_scam.models import (
+    STEP_IDS,
+    STEP_TITLES,
+    VERDICT_LABELS,
+    CheckError,
+    CheckResult,
+    StepResult,
+)
 from kill_scam.tracing import init_tracing
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -30,6 +38,12 @@ VERDICT_MARKS = {
     "suspicious": "Be careful",
     "likely_scam": "Likely a scam — do not click",
 }
+STEP_MARK = {
+    "pending": "○",
+    "running": "●",
+    "done": "✓",
+    "skipped": "–",
+}
 
 
 def main() -> None:
@@ -42,12 +56,13 @@ def main() -> None:
     st.markdown("### Check a message **before** you click.")
     st.write(
         "Paste an email, text, or WhatsApp message. "
-        "You will get a plain-language verdict: OK, be careful, or likely a scam."
+        "Kill Scam walks through **five checks** you can see. "
+        "This is a process, not a magic score."
     )
 
     message = st.text_area(
         "Paste the suspicious message",
-        height=260,
+        height=240,
         placeholder="Paste the whole message here. Do not click any links in it.",
         label_visibility="visible",
         key="paste_box",
@@ -57,8 +72,8 @@ def main() -> None:
 
     if check_clicked:
         _run_check(message, source="paste")
-
-    if st.session_state.get("last_result") and not check_clicked:
+    elif st.session_state.get("last_result"):
+        _show_checklist(st.session_state.get("last_steps") or [])
         _show_result(st.session_state["last_result"])
 
     st.divider()
@@ -66,17 +81,29 @@ def main() -> None:
 
     st.caption(
         "Kill Scam never sends mail and never writes to your inbox. "
+        "It never opens the suspicious website. "
         "Paste stays on this computer unless you turn on Arize tracing. "
         "This is a helper, not a guarantee."
     )
 
 
 def _run_check(message: str, *, source: str) -> None:
+    slot = st.empty()
+    steps = {
+        step_id: StepResult(id=step_id, title=STEP_TITLES[step_id], status="pending")
+        for step_id in STEP_IDS
+    }
+    _draw_checklist(slot, list(steps.values()))
+    result: CheckResult | None = None
     try:
-        result = classify_message(message, source=source)
-    except MissingApiKeyError as exc:
-        st.warning(str(exc) or MissingApiKeyError.user_message)
-        return
+        for event in iter_checklist(message, source=source, allow_search=True):
+            if isinstance(event, StepResult):
+                steps[event.id] = event
+                _draw_checklist(slot, list(steps.values()))
+                if event.status == "running":
+                    time.sleep(0.12)
+            elif isinstance(event, CheckResult):
+                result = event
     except CheckError as exc:
         st.error(str(exc))
         return
@@ -84,8 +111,35 @@ def _run_check(message: str, *, source: str) -> None:
         logger.warning("Unexpected check failure (source=%s).", source)
         st.error("Something went wrong while checking. Please try again.")
         return
+    if result is None:
+        st.error("The checklist did not finish.")
+        return
+    st.session_state["last_steps"] = result.steps or list(steps.values())
     st.session_state["last_result"] = result
+    _draw_checklist(slot, st.session_state["last_steps"])
     _show_result(result)
+
+
+def _show_checklist(steps: list[StepResult]) -> None:
+    if not steps:
+        return
+    st.markdown("**The five checks**")
+    for step in steps:
+        mark = STEP_MARK.get(step.status, "○")
+        status_word = {
+            "pending": "waiting",
+            "running": "running",
+            "done": "done",
+            "skipped": "skipped",
+        }.get(step.status, step.status)
+        st.markdown(f"{mark} **{step.title}** — {status_word}")
+        if step.summary and step.status in {"done", "skipped", "running"}:
+            st.caption(step.summary)
+
+
+def _draw_checklist(slot, steps: list[StepResult]) -> None:
+    with slot.container():
+        _show_checklist(steps)
 
 
 def _show_result(result: CheckResult) -> None:
@@ -95,7 +149,7 @@ def _show_result(result: CheckResult) -> None:
     st.markdown(
         f"""
         <div class="verdict" style="background:{background}; border-color:{color};">
-          <p class="verdict-kicker">Result</p>
+          <p class="verdict-kicker">After the five checks</p>
           <p class="verdict-title" style="color:{color};">{headline}</p>
           <p class="verdict-summary">{result.summary}</p>
         </div>
@@ -103,7 +157,7 @@ def _show_result(result: CheckResult) -> None:
         unsafe_allow_html=True,
     )
     if result.reasons:
-        st.markdown("**Why**")
+        st.markdown("**Why (tied to the checks)**")
         for reason in result.reasons:
             st.markdown(f"- {reason}")
     if result.advice:

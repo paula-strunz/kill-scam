@@ -104,6 +104,38 @@
       "gold_verdict": "ok",
       "notes": "Internal meeting note.",
       "message": "Team walk-through tomorrow at 9:00 in the blue room. Please bring the printed checklist from last week. Parking is in the usual lot."
+    },
+    {
+      "id": "scam-lookalike-impots",
+      "category": "lookalike_domain",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Requires the process: official display name, hyphen lookalike (impots-gouv.fr vs impots.gouv.fr). A vibe check can miss this.",
+      "message": "From: Direction générale des Finances publiques <service@impots-gouv.fr>\nSubject: Votre remboursement d'impôt\n\nVotre remboursement est disponible. Cliquez ici pour le recevoir aujourd'hui:\nhttps://impots-gouv.fr/connexion"
+    },
+    {
+      "id": "scam-lookalike-nested-chronopost",
+      "category": "lookalike_domain",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Requires the process: From looks like Chronopost, trap host nests chronopost.fr then extra labels. Do not fetch the URL.",
+      "message": "From: Chronopost <suivi@chronopost.fr>\nSubject: Colis en attente\n\nVotre colis est bloqué. Réglez 0,99 € de frais ici:\nhttp://chronopost.fr.suivi-colis.test/paiement"
+    },
+    {
+      "id": "ham-bank-statement-official",
+      "category": "bank_ham",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Legitimate-looking bank-style ham: official La Banque Postale domain, no click/pay/code demand.",
+      "message": "From: La Banque Postale <ne-pas-repondre@labanquepostale.fr>\nSubject: Votre relevé de février\n\nBonjour, votre relevé du mois est disponible dans votre espace habituel. Aucune action n'est demandée. Nous ne vous demanderons jamais un mot de passe par email."
+    },
+    {
+      "id": "ham-school-parents-evening",
+      "category": "school_ham",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Legitimate-looking school ham. No payment, no lookalike link.",
+      "message": "From: Lycée Jean Moulin <secretariat@lycee-jean-moulin.example>\nSubject: Réunion parents-profs\n\nLa réunion a lieu mardi à 18h au gymnase. Merci d'apporter le carnet de correspondance. Pas de paiement en ligne."
     }
   ]
 }
