@@ -100,13 +100,17 @@ def test_run_eval_with_stub_classifier() -> None:
     from kill_scam.evals import run_eval
     from kill_scam.models import CheckResult
 
+    scam_markers = (
+        "account will be frozen",
+        "Amazon gift cards",
+        "email password",
+        "Mom its me",
+        "release fee",
+        "parcel-redelivery-login.test",
+    )
+
     def stub(message: str) -> CheckResult:
-        if "gift card" in message.lower() or "password" in message.lower() or "http://" in message.lower():
-            verdict = "likely_scam"
-        elif "Mom its me" in message:
-            verdict = "likely_scam"
-        else:
-            verdict = "ok"
+        verdict = "likely_scam" if any(marker in message for marker in scam_markers) else "ok"
         return CheckResult(verdict=verdict, summary="stub", reasons=["stub"], advice="stub")
 
     report = run_eval(classify=stub)

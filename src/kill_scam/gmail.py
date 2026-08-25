@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from datetime import timezone
+from datetime import UTC
 from typing import Any
 
 from kill_scam.config import (
@@ -118,7 +118,9 @@ def list_recent_messages(limit: int = GMAIL_SCAN_LIMIT) -> list[GmailMessage]:
         )
     except Exception:
         logger.warning("Gmail list failed.")
-        raise GmailError("Could not read recent Gmail. Try Connect Gmail again, or paste the text.") from None
+        raise GmailError(
+            "Could not read recent Gmail. Try Connect Gmail again, or paste the text."
+        ) from None
 
     messages: list[GmailMessage] = []
     for item in listed.get("messages", []):
@@ -184,7 +186,10 @@ def _service():
 
 
 def _to_message(raw: dict[str, Any]) -> GmailMessage:
-    headers = {h.get("name", "").lower(): h.get("value", "") for h in raw.get("payload", {}).get("headers", [])}
+    payload = raw.get("payload", {})
+    headers = {
+        h.get("name", "").lower(): h.get("value", "") for h in payload.get("headers", [])
+    }
     date_raw = headers.get("date", "")
     date = _short_date(date_raw)
     snippet = (raw.get("snippet") or "").strip()
@@ -207,7 +212,7 @@ def _short_date(value: str) -> str:
 
         parsed = parsedate_to_datetime(value)
         if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=timezone.utc)
+            parsed = parsed.replace(tzinfo=UTC)
         return parsed.astimezone().strftime("%Y-%m-%d %H:%M")
     except Exception:
         return value[:32]

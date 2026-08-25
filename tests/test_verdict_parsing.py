@@ -26,7 +26,12 @@ def test_parse_plain_json() -> None:
 def test_parse_json_in_markdown_fence() -> None:
     raw = """Here you go:
 ```json
-{"verdict": "ok", "summary": "This is a picnic reminder.", "reasons": ["No payment ask"], "advice": "No special steps."}
+{
+  "verdict": "ok",
+  "summary": "This is a picnic reminder.",
+  "reasons": ["No payment ask"],
+  "advice": "No special steps."
+}
 ```
 """
     result = parse_verdict(raw)

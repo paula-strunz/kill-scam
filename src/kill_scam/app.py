@@ -3,20 +3,13 @@
 from __future__ import annotations
 
 import logging
-import sys
-from pathlib import Path
-
-# Make `streamlit run src/kill_scam/app.py` work without an editable install.
-_SRC = Path(__file__).resolve().parents[1]
-if str(_SRC) not in sys.path:
-    sys.path.insert(0, str(_SRC))
 
 import streamlit as st
 
 from kill_scam import gmail as gmail_client
 from kill_scam.classifier import classify_message
 from kill_scam.config import load_env
-from kill_scam.models import CheckError, CheckResult, MissingApiKeyError, VERDICT_LABELS
+from kill_scam.models import VERDICT_LABELS, CheckError, CheckResult, MissingApiKeyError
 from kill_scam.tracing import init_tracing
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -120,7 +113,9 @@ def _show_result(result: CheckResult) -> None:
 
 def _gmail_section() -> None:
     st.subheader("Optional: check recent Gmail")
-    st.write("This only reads recent mail. It never sends, never deletes, and never changes anything.")
+    st.write(
+        "This only reads recent mail. It never sends, never deletes, and never changes anything."
+    )
 
     if not gmail_client.is_configured():
         st.info(
@@ -195,7 +190,12 @@ def _inject_styles() -> None:
             padding: 1rem 1.2rem;
             margin: 0.8rem 0 1rem;
           }
-          .verdict-kicker { margin: 0; font-size: 0.9rem; letter-spacing: 0.04em; text-transform: uppercase; }
+          .verdict-kicker {
+            margin: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+          }
           .verdict-title { margin: 0.15rem 0 0.4rem; font-size: 1.8rem; font-weight: 750; }
           .verdict-summary { margin: 0; font-size: 1.15rem; }
         </style>

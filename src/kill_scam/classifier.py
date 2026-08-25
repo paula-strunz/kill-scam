@@ -9,11 +9,11 @@ from collections.abc import Mapping
 
 from kill_scam.config import MAX_MESSAGE_CHARS, openai_api_key, openai_model
 from kill_scam.models import (
+    VERDICT_ALIASES,
     VERDICTS,
     CheckError,
     CheckResult,
     MissingApiKeyError,
-    VERDICT_ALIASES,
 )
 from kill_scam.prompts import SYSTEM_PROMPT, user_prompt
 from kill_scam.tracing import record_verdict, start_check_span
@@ -50,7 +50,11 @@ def classify_message(message: str, *, source: str = "paste") -> CheckResult:
 
     api_key = openai_api_key()
     if not api_key:
-        logger.info("Check skipped: OPENAI_API_KEY is not set (source=%s, length=%s).", source, len(cleaned))
+        logger.info(
+            "Check skipped: OPENAI_API_KEY is not set (source=%s, length=%s).",
+            source,
+            len(cleaned),
+        )
         raise MissingApiKeyError(MissingApiKeyError.user_message)
 
     logger.info("Running scam check (source=%s, length=%s).", source, len(cleaned))
@@ -83,7 +87,8 @@ def _call_openai(message: str, api_key: str) -> str:
     except Exception:
         logger.warning("OpenAI request failed. The message body was not logged.")
         raise CheckError(
-            "We could not reach the checker. Check your internet connection and OpenAI key, then try again."
+            "We could not reach the checker. "
+            "Check your internet connection and OpenAI key, then try again."
         ) from None
 
     content = (response.choices[0].message.content or "").strip()
