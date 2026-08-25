@@ -35,6 +35,11 @@ $RECYCLE.BIN/
 *.key
 *.p12
 *.pfx
+credentials.json
+client_secret*.json
+token.json
+gmail_token.json
+.kill-scam/
 
 # ----------------------------------------------------------------------------- #
 # Logs and diagnostics
