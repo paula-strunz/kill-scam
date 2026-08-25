@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import logging
 import time
 
@@ -10,6 +11,7 @@ import streamlit as st
 from kill_scam import gmail as gmail_client
 from kill_scam.agent import iter_checklist
 from kill_scam.config import load_env
+from kill_scam.links import defang_for_display
 from kill_scam.models import (
     STEP_IDS,
     STEP_TITLES,
@@ -134,7 +136,7 @@ def _show_checklist(steps: list[StepResult]) -> None:
         }.get(step.status, step.status)
         st.markdown(f"{mark} **{step.title}** — {status_word}")
         if step.summary and step.status in {"done", "skipped", "running"}:
-            st.caption(step.summary)
+            st.caption(defang_for_display(step.summary))
 
 
 def _draw_checklist(slot, steps: list[StepResult]) -> None:
@@ -151,7 +153,7 @@ def _show_result(result: CheckResult) -> None:
         <div class="verdict" style="background:{background}; border-color:{color};">
           <p class="verdict-kicker">After the five checks</p>
           <p class="verdict-title" style="color:{color};">{headline}</p>
-          <p class="verdict-summary">{result.summary}</p>
+          <p class="verdict-summary">{html.escape(defang_for_display(result.summary))}</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -159,10 +161,10 @@ def _show_result(result: CheckResult) -> None:
     if result.reasons:
         st.markdown("**Why (tied to the checks)**")
         for reason in result.reasons:
-            st.markdown(f"- {reason}")
+            st.markdown(f"- {defang_for_display(reason)}")
     if result.advice:
         st.markdown("**What to do**")
-        st.write(result.advice)
+        st.write(defang_for_display(result.advice))
 
 
 def _gmail_section() -> None:
@@ -220,9 +222,9 @@ def _gmail_section() -> None:
     for item in messages:
         with st.container(border=True):
             st.markdown(f"**{item.subject}**")
-            st.caption(f"{item.sender} · {item.date}")
+            st.caption(f"{defang_for_display(item.sender)} · {item.date}")
             if item.snippet:
-                st.write(item.snippet)
+                st.write(defang_for_display(item.snippet))
             if st.button("Check this Gmail", key=f"check-{item.id}"):
                 _run_check(item.as_check_text(), source="gmail")
 

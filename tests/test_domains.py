@@ -12,7 +12,13 @@ from kill_scam.domains import (
     lookalikes_against_list,
     registered_domain,
 )
-from kill_scam.links import UnsafeFetchError, extract_urls, inspect_links, refuse_destination_fetch
+from kill_scam.links import (
+    UnsafeFetchError,
+    defang_for_display,
+    extract_urls,
+    inspect_links,
+    refuse_destination_fetch,
+)
 from kill_scam.search import UnsafeFetchError as SearchUnsafeFetchError
 from kill_scam.search import assert_allowlisted
 
@@ -67,6 +73,26 @@ def test_extract_urls_and_inspect_without_fetch(monkeypatch: pytest.MonkeyPatch)
 def test_refuse_destination_fetch() -> None:
     with pytest.raises(UnsafeFetchError, match="will not open"):
         refuse_destination_fetch("http://evil-bank-login.test/steal")
+
+
+def test_defang_breaks_lookalike_urls_and_emails() -> None:
+    url = defang_for_display("Cliquez https://impots-gouv.fr/connexion")
+    assert "https://" not in url
+    assert "impots-gouv.fr" not in url
+    assert "impots-gouv[.]fr" in url
+
+    email = defang_for_display("From: DGFIP <service@impots-gouv.fr>")
+    assert "service@impots-gouv.fr" not in email
+    assert " [at] " in email
+    assert "impots-gouv[.]fr" in email
+
+    nested = defang_for_display("http://chronopost.fr.suivi-colis.test/paiement")
+    assert "http://" not in nested
+    assert "chronopost.fr.suivi-colis.test" not in nested
+    assert "[.]" in nested
+
+    ordinary = defang_for_display("Please call the office. No payment.")
+    assert ordinary == "Please call the office. No payment."
 
 
 def test_search_allowlist_blocks_pasted_hosts() -> None:

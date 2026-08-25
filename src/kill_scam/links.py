@@ -157,3 +157,14 @@ def refuse_destination_fetch(url: str) -> None:
         f"Kill Scam will not open or download {url}. "
         "We only read the website name in the text."
     )
+
+
+def defang_for_display(text: str) -> str:
+    """Break auto-links so a lookalike host is not clickable in the UI."""
+    cleaned = re.sub(r"https?://", "", text or "")
+    cleaned = re.sub(
+        r"\b([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)\b",
+        lambda match: match.group(1).replace(".", "[.]"),
+        cleaned,
+    )
+    return cleaned.replace("@", " [at] ")
