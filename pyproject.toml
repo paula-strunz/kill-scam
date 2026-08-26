@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kill-scam"
+version = "0.1.0"
+description = "Paste a suspicious message and get a plain-language scam check before you click."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Paula Strunz" }]
+dependencies = [
+    "streamlit",
+    "openai",
+    "python-dotenv",
+    "arize-otel",
+    "openinference-instrumentation-openai",
+    "openinference-semantic-conventions",
+    "opentelemetry-api",
+    "google-auth",
+    "google-auth-oauthlib",
+    "google-api-python-client",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[project.scripts]
+kill-scam-eval = "kill_scam.evals:main"
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]

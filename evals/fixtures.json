@@ -1,0 +1,141 @@
+{
+  "name": "kill-scam-v1-classification",
+  "description": "Synthetic obvious scam vs obvious ham. No real people, no real inboxes. Shaped for a later Arize dataset (id, message, gold_label, gold_verdict, category).",
+  "version": 1,
+  "label_field": "gold_label",
+  "input_field": "message",
+  "output_field": "gold_verdict",
+  "labels": ["scam", "ham"],
+  "verdicts": ["ok", "suspicious", "likely_scam"],
+  "metrics": ["missed_scam", "false_alarm"],
+  "examples": [
+    {
+      "id": "scam-fake-bank",
+      "category": "fake_bank",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Fake bank login pressure with a lookalike website.",
+      "message": "From: National Example Bank Security <alerts@nat-example-bank-secure.test>\nSubject: Your account will be closed tonight\n\nWe detected unusual activity. Confirm your password and card number at http://nat-example-bank-secure.test/login in the next 15 minutes or your account will be frozen."
+    },
+    {
+      "id": "scam-gift-card-pressure",
+      "category": "payment_pressure",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Payment pressure using gift cards.",
+      "message": "Hi, this is the tax office. You owe $2,480 that must be paid today with Amazon gift cards. Do not tell anyone. Send photos of the card codes to this number or police will visit your home."
+    },
+    {
+      "id": "scam-credential-theft",
+      "category": "credential_theft",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Asks for password and a one-time code.",
+      "message": "WhatsApp: Your mailbox is full and will be deleted. Reply with your email password and the 6-digit code we just texted you so we can keep your messages."
+    },
+    {
+      "id": "scam-family-emergency",
+      "category": "family_emergency",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Family emergency money request from an unknown number.",
+      "message": "Mom its me. I broke my phone and I am using a new number. I was in a car crash and need $900 in cash app right now for the hospital. Please do not call Dad. Send it and I will explain later."
+    },
+    {
+      "id": "scam-prize",
+      "category": "too_good_to_be_true",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Prize that requires a fee and a login.",
+      "message": "Congratulations! You won a $4,000 Harbor Store gift card. Pay a $49 release fee with a wire transfer and sign in at http://harbor-prize-claim.test to receive it today."
+    },
+    {
+      "id": "scam-delivery-phishing",
+      "category": "phishing",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Fake delivery notice with a login link.",
+      "message": "Your parcel could not be delivered. Fees of $1.99 are unpaid. Click http://parcel-redelivery-login.test and enter your bank login or the package will be returned and you will be charged $39."
+    },
+    {
+      "id": "ham-school-newsletter",
+      "category": "newsletter",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Ordinary school update with no payment pressure.",
+      "message": "From: Maple Street School Office\nSubject: Friday picnic reminder\n\nHello families, the picnic is still at 12:00 on the playground. Bring a blanket if you like. No action needed if you already signed the paper form last week."
+    },
+    {
+      "id": "ham-dentist-reminder",
+      "category": "appointment",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Appointment reminder without a login or payment demand.",
+      "message": "Hi Jordan, this is a reminder that your cleaning at Cedar Dental is Tuesday at 10:30. If you need to change it, call the office number on your appointment card. See you then."
+    },
+    {
+      "id": "ham-dinner-plan",
+      "category": "personal",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Friend confirming dinner.",
+      "message": "Hey, still good for tacos at 7? I will grab a table by the window. No need to bring anything besides yourself."
+    },
+    {
+      "id": "ham-order-update",
+      "category": "commerce",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Normal order update for something already bought.",
+      "message": "From: Harbor Books\nSubject: Your book is on the way\n\nThe cookbook you ordered on Monday left the shop today. You can pick it up at the front desk with your name. No payment is due."
+    },
+    {
+      "id": "ham-library-notice",
+      "category": "community",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Library hold notice without a credential request.",
+      "message": "The cookbook you requested is being held at Riverside Library for 3 days. Bring your library card. We will not ask for your password."
+    },
+    {
+      "id": "ham-calendar-invite",
+      "category": "calendar",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Internal meeting note.",
+      "message": "Team walk-through tomorrow at 9:00 in the blue room. Please bring the printed checklist from last week. Parking is in the usual lot."
+    },
+    {
+      "id": "scam-lookalike-impots",
+      "category": "lookalike_domain",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Requires the process: official display name, hyphen lookalike (impots-gouv.fr vs impots.gouv.fr). A vibe check can miss this.",
+      "message": "From: Direction générale des Finances publiques <service@impots-gouv.fr>\nSubject: Votre remboursement d'impôt\n\nVotre remboursement est disponible. Cliquez ici pour le recevoir aujourd'hui:\nhttps://impots-gouv.fr/connexion"
+    },
+    {
+      "id": "scam-lookalike-nested-chronopost",
+      "category": "lookalike_domain",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Requires the process: From looks like Chronopost, trap host nests chronopost.fr then extra labels. Do not fetch the URL.",
+      "message": "From: Chronopost <suivi@chronopost.fr>\nSubject: Colis en attente\n\nVotre colis est bloqué. Réglez 0,99 € de frais ici:\nhttp://chronopost.fr.suivi-colis.test/paiement"
+    },
+    {
+      "id": "ham-bank-statement-official",
+      "category": "bank_ham",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Legitimate-looking bank-style ham: official La Banque Postale domain, no click/pay/code demand.",
+      "message": "From: La Banque Postale <ne-pas-repondre@labanquepostale.fr>\nSubject: Votre relevé de février\n\nBonjour, votre relevé du mois est disponible dans votre espace habituel. Aucune action n'est demandée. Nous ne vous demanderons jamais un mot de passe par email."
+    },
+    {
+      "id": "ham-school-parents-evening",
+      "category": "school_ham",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Legitimate-looking school ham. No payment, no lookalike link.",
+      "message": "From: Lycée Jean Moulin <secretariat@lycee-jean-moulin.example>\nSubject: Réunion parents-profs\n\nLa réunion a lieu mardi à 18h au gymnase. Merci d'apporter le carnet de correspondance. Pas de paiement en ligne."
+    }
+  ]
+}

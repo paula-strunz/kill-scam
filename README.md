@@ -1,96 +1,149 @@
-# Universal Project Template
+# Kill Scam
 
 ## TL;DR
 
-This is a **GitHub template repository** for starting any kind of project: TypeScript, Python, or another stack. Select **Use this template** on GitHub to create a new repository with these files and agent instructions.
+Kill Scam helps you check a suspicious **email, text, or WhatsApp message before you click**. It walks through **five checks you can see**, then gives a plain-language result: **Looks OK**, **Be careful**, or **Likely a scam**.
 
-## Create A Repository
-
-1. Select **Use this template** at the top of the GitHub repository page.
-2. Select **Create a new repository**.
-3. Choose its owner, name, and visibility.
-4. Select **Create repository**.
+The product is the **process**, not a magic score.
 
 ```text
-This template
-      |
-      v
-Use this template
-      |
-      v
-Your new repository
+You paste a message
+        |
+        v
+1. What does it want?     (click, pay, code, app, stay silent)
+2. Who does it claim?     (name vs real address; official site)
+3. Check the addresses    (lookalikes — we do NOT open the page)
+4. Known scam patterns    (tax, parcel, EDF, CAF, …)
+5. Verdict + what to do   (including 33700 / signal-spam.fr)
 ```
 
-The new repository is independent from this template. Keep shared agent instructions in `AGENTS.md`, reusable skills in `.agents/skills`, and reusable rules in `.agents/rules`.
+## What it is
 
-## Development Flow
+- A simple page you run on your own computer
+- A paste box (this is the main way to use it)
+- A visible five-step checklist
+- Optional Gmail: **read-only** scan of recent mail if you set that up
+- Optional tracing to **your** Arize account
+
+## What it is not
+
+- It never sends email
+- It never writes to your inbox
+- It never opens the suspicious website (that would be walking into the trap)
+- It does not replace calling your bank with a number **you already have**
+- It will not catch every scam
+
+## The five checks
+
+| Step | In everyday words |
+| --- | --- |
+| 1. What does it want? | Click a link? Pay? Give a code? Install an app? Stay silent? |
+| 2. Who does it claim to be? | We read the **address**, not the pretty name. We look up the official site for impôts, La Poste, Chronopost, EDF, CAF, banks, Microsoft, Apple, … |
+| 3. Check the web addresses | We only look at the **website name** (lookalikes, extra words, coded letters, short links). We do **not** open the page. |
+| 4. Known scam patterns | We compare with common campaigns (fake tax refund, parcel fees, energy bill, bank advisor, CPF, CAF). If live guidance sites cannot be reached, we continue with the built-in list and say so. |
+| 5. Verdict | OK / be careful / likely a scam, with reasons tied to which steps fired. In France: SMS **33700**, email **signal-spam.fr**. |
+
+We do not invent facts that were not in the message or in those checks.
+
+## How to run (first time)
+
+You need a computer and Python 3.11 or newer. An OpenAI key is **not** required for the five checks.
+
+1. Open a terminal in this folder.
+2. Optional: `cp .env.example .env` and fill only what you use.
+3. Install and start:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+streamlit run src/kill_scam/app.py
+```
+
+4. A browser window should open. Paste a message. Select **Check this message**. Watch the five steps.
+
+On Windows, use `.venv\Scripts\activate` instead of `source .venv/bin/activate`.
+
+## What you will see
+
+| Result | Meaning |
+| --- | --- |
+| Looks OK | The five checks did not find scam pressure |
+| Be careful | Something is off — pause and verify another way |
+| Likely a scam | Do not click, do not pay, do not share codes |
+
+Each result lists **which checks** led there.
+
+## Privacy
 
 ```text
-Start a project
-      |
-      v
-Choose the right stack for the use case
-      |
-      v
-Follow its established industry practices
-      |
-      v
-Build, test, explain, and verify
+Paste box
+  five local checks on your computer
+  we never open the suspicious website
+  not printed in full in the app log
+
+Optional live guidance search
+  only known search hosts
+  never the link from the message
+
+Optional Arize tracing
+  parent check + each step, with a hash not the full paste
+  stored in YOUR Arize space
+
+Optional Gmail
+  read-only, last 20 inbox items
+  never send, never change mail
 ```
 
-## How It Works
+- **Do not paste secrets** you want nobody to see (passwords, one-time codes, bank PINs).
+- App logs record length, a short hash, and the verdict — not the full message.
+- If you set `ARIZE_API_KEY` and `ARIZE_SPACE_ID`, traces go to **your** Arize project named `kill-scam`. Leave those blank to skip tracing.
+- Gmail: read-only. A sign-in token is saved under `.kill-scam/`, not in git.
 
-The template does not force a programming language or framework. The agent must first understand the use case, inspect the repository, and then apply the conventions and best practices of the selected ecosystem.
+## Settings (`.env`)
 
-```text
-                         .agents/
-                       /          \
-                  skills/          rules/
-                 /      \          /     \
-       .codex/skills  .claude/skills   tool rule links
+| Setting | Needed? | What it does |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | No | Unused for the five checks today |
+| `OPENAI_MODEL` | No | Defaults to `gpt-4o-mini` if you add a key later |
+| `ARIZE_API_KEY` | No | Turns on tracing to your Arize space |
+| `ARIZE_SPACE_ID` | No | Your Arize space. Project name is always `kill-scam` |
+| `GOOGLE_CLIENT_ID` | No | Turns on Connect Gmail |
+| `GOOGLE_CLIENT_SECRET` | No | Turns on Connect Gmail |
+
+If Google keys are missing, **Connect Gmail is hidden**. Paste still works.
+
+## Optional Gmail (read-only)
+
+1. In Google Cloud, create a desktop OAuth client.
+2. Put the client id and secret in `.env`.
+3. Restart the app. **Connect Gmail (read-only)** appears.
+4. Sign in, then scan the last 20 inbox messages and check one.
+
+If anything fails, use the paste box.
+
+## Optional Arize tracing
+
+Set `ARIZE_API_KEY` and `ARIZE_SPACE_ID`. Each paste becomes a parent check with five child steps (tool name + summaries + message hash). Missing keys: the app still runs.
+
+## Tests and evals
+
+Synthetic examples live in `evals/fixtures.json` (made-up scams and ordinary messages, **no real inboxes**). Some examples **need the process** (a lookalike domain a quick glance can miss, and a legitimate-looking school/bank message).
+
+```bash
+pytest
+python -m kill_scam.evals
 ```
 
-`.agents` is the single source of truth. The `.codex` and `.claude` folders contain symbolic links, so both tools use the same skills and rules without duplicated files.
+The eval script scores **missed scams** vs **false alarms** using the local checklist (no live web search). Unit tests cover URL parsing and lookalike domains **without network**.
 
-## Agent Behavior
+## Safety
 
-The shared rules in `AGENTS.md` tell agents to:
+This project is **defensive only**. It helps people pause before they click. It does not include phishing kits, attack how-tos, or tools for sending scam mail.
 
-- Use best practices and established industry patterns appropriate to the current use case.
-- Detect and respect the project's language, framework, architecture, and existing conventions.
-- Assume the user is non-technical unless they say otherwise.
-- Start explanations with a short `TL;DR`.
-- Use concise, ADHD-friendly sections, bullets, and clear next steps.
-- Include a simple ASCII diagram when explaining a system, workflow, architecture, or non-trivial change.
-- Explain jargon in plain language and make tradeoffs explicit.
-- Validate work with the relevant formatter, linter, type checker, and tests.
+If you are unsure after a check, contact the company or person using a phone number or address you already trust — not a number from the suspicious message.
 
-## Structure
+In France you can also:
 
-```text
-.
-|-- AGENTS.md             # Shared agent instructions
-|-- AGENTS.local.md       # Optional project-specific additions
-|-- CLAUDE.md             # Loads the shared instructions
-|-- CLAUDE.local.md       # Loads local additions
-|-- .env.example          # Safe environment-variable template
-|-- .gitignore            # Common cross-language generated files
-|-- .agents/
-|   |-- skills/           # Canonical reusable skills
-|   `-- rules/            # Canonical reusable rules
-|-- .codex/
-|   |-- skills -> ../.agents/skills
-|   `-- rules  -> ../.agents/rules
-`-- .claude/
-    |-- skills -> ../.agents/skills
-    `-- rules  -> ../.agents/rules
-```
-
-## Start A Project
-
-1. Put project-specific context and exceptions in `AGENTS.local.md`.
-2. Add reusable skills to `.agents/skills` and reusable rules to `.agents/rules`.
-3. Add the application code and the standard tooling for its chosen ecosystem.
-4. Ask the agent to implement the first feature; it should explain the plan clearly before making substantial changes.
-
-Project-specific instructions override generic guidance when they conflict. Security, correctness, accessibility, and maintainability should remain default expectations.
+- Forward a scam SMS to **33700** (free)
+- Report a scam email at **signal-spam.fr**
