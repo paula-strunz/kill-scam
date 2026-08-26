@@ -1,5 +1,7 @@
 # Kill Scam
 
+Product requirements: [docs/PRD.md](docs/PRD.md).
+
 ## TL;DR
 
 Kill Scam helps you check a suspicious **email, text, or WhatsApp message before you click**. It walks through **five checks you can see**, then gives a plain-language result: **Looks OK**, **Be careful**, or **Likely a scam**.
