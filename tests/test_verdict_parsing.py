@@ -71,7 +71,7 @@ def test_parse_rejects_empty_and_unknown() -> None:
 
 def test_empty_paste_does_not_need_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    with pytest.raises(CheckError, match="paste a message"):
+    with pytest.raises(CheckError, match="provide a message"):
         classify_message("   ")
 
 
