@@ -7,7 +7,7 @@ import logging
 import re
 from collections.abc import Iterator, Mapping
 
-from kill_scam.asks import extract_asks
+from kill_scam.asks import HOOK_LABELS, extract_asks
 from kill_scam.campaigns import DuckDuckGoSearcher, NullSearcher, extract_campaigns
 from kill_scam.config import MAX_MESSAGE_CHARS
 from kill_scam.identity import extract_identity
@@ -65,7 +65,7 @@ def iter_checklist(
 ) -> Iterator[StepResult | CheckResult]:
     cleaned = (message or "").strip()
     if not cleaned:
-        raise CheckError("Please paste a message first.")
+        raise CheckError("Please provide a message first.")
     if len(cleaned) > MAX_MESSAGE_CHARS:
         raise CheckError(
             f"That text is too long (max {MAX_MESSAGE_CHARS:,} characters). "
@@ -103,7 +103,10 @@ def iter_checklist(
                         "; ".join(ask.findings),
                         list(ask.findings),
                     )
-                    record_tool_output(span, {"kinds": list(ask.kinds)})
+                    record_tool_output(
+                        span,
+                        {"kinds": list(ask.kinds), "hooks": list(ask.hooks)},
+                    )
                 elif step_id == "identity":
                     identity = extract_identity(cleaned)
                     done = _step(
@@ -241,6 +244,9 @@ def _build_verdict(ask, identity, links, campaigns, fingerprint: str) -> CheckRe
         if "click" in ask.kinds and not (links and links.links):
             suspicious_flags.append("ask")
             reasons.append("Ask: it pushes you to click, without a clear official website.")
+        if ask.hooks and (likely_flags or suspicious_flags):
+            labels = ", ".join(HOOK_LABELS[hook] for hook in ask.hooks)
+            reasons.append(f"Ask: the {labels} persuasion hook fired.")
 
     if campaigns and campaigns.matched:
         labels = ", ".join(sorted({hit.label for hit in campaigns.hits}))
