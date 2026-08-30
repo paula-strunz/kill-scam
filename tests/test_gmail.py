@@ -11,17 +11,16 @@ from kill_scam.gmail import (
     SCOPES,
     GmailError,
     GmailMessage,
+    _readonly_call,
     assert_readonly_scopes,
     authorization_url,
     extract_plain_text,
     finish_connect,
-    _readonly_call,
     get_message,
     list_recent_messages,
     message_from_api,
     setup_status,
 )
-
 
 GMAIL_SOURCE = Path(__file__).resolve().parents[1] / "src" / "kill_scam" / "gmail.py"
 
@@ -50,7 +49,7 @@ def test_gmail_helper_source_cannot_send() -> None:
         ".send(",
     ):
         assert needle not in source
-    assert "gmail.readonly" in source
+    assert "GMAIL_READONLY_SCOPE" in source
     assert "Never send" in source or "never send" in source.lower()
 
 
