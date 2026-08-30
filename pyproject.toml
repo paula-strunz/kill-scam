@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "kill-scam"
 version = "0.1.0"
-description = "Paste a suspicious message and get a plain-language scam check before you click."
+description = "Connect Gmail (read-only) and check recent mail with a visible five-step scam checklist."
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "Paula Strunz" }]
