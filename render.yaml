@@ -1,0 +1,26 @@
+# Host Kill Scam as a long-running web process on Render.
+# Set secret env vars in the Render dashboard. Never commit real keys.
+
+services:
+  - type: web
+    name: kill-scam
+    runtime: docker
+    plan: starter
+    healthCheckPath: /
+    envVars:
+      - key: KILL_SCAM_HOSTED
+        value: "1"
+      - key: PORT
+        value: "8080"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: ARIZE_API_KEY
+        sync: false
+      - key: ARIZE_SPACE_ID
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

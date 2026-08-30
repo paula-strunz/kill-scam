@@ -1,0 +1,24 @@
+# Optional Fly.io hosting. Dockerfile is the build.
+# fly launch --no-deploy, then fly secrets set GOOGLE_CLIENT_ID=...
+
+app = "kill-scam"
+primary_region = "cdg"
+
+[build]
+
+[env]
+  KILL_SCAM_HOSTED = "1"
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
