@@ -4,69 +4,41 @@ Product requirements: [docs/PRD.md](docs/PRD.md).
 
 ## TL;DR
 
-Kill Scam helps you check a suspicious **email, text, or WhatsApp message before you click**. It walks through **five checks you can see**, then gives a plain-language result: **Looks OK**, **Be careful**, or **Likely a scam**.
+Kill Scam is a small website that **connects to Gmail (read-only)**, looks at recent inbox mail, and walks through **five checks you can see**. Each message gets **Looks OK**, **Be careful**, or **Likely a scam**, plus which persuasion trick fired.
 
-The product is the **process**, not a magic score.
+It **never sends mail**. It **never deletes mail**. It **never writes to your mailbox**. It never opens a suspicious website.
 
 ```text
-You paste a message
-        |
-        v
-1. What does it want?     (click, pay, code, app, stay silent)
-2. Who does it claim?     (name vs real address; official site)
-3. Check the addresses    (lookalikes — we do NOT open the page)
-4. Known scam patterns    (tax, parcel, EDF, CAF, …)
-5. Verdict + what to do   (including 33700 / signal-spam.fr)
+Open Kill Scam
+      |
+      v
+Connect Gmail (read-only, once)
+      |
+      v
+See recent inbox messages (last 7 days, up to 20)
+      |
+      v
+Tap Check on a message
+      |
+      +--> 1. What does it want?  + which hook (authority, fear, …)
+      +--> 2. Who does it claim to be?
+      +--> 3. Check the web addresses (we do NOT open the page)
+      +--> 4. Known scam patterns
+      +--> 5. Looks OK / Be careful / Likely a scam
 ```
 
-## What it is
+## Who it is for
 
-- A simple page you run on your own computer
-- A paste box (this is the main way to use it)
-- A visible five-step checklist
-- Optional Gmail: **read-only** scan of recent mail if you set that up
-- Optional tracing to **your** Arize account
-
-## What it is not
-
-- It never sends email
-- It never writes to your inbox
-- It never opens the suspicious website (that would be walking into the trap)
-- It does not replace calling your bank with a number **you already have**
-- It will not catch every scam
-
-## The five checks
-
-| Step | In everyday words |
-| --- | --- |
-| 1. What does it want? | Click a link? Pay? Give a code? Install an app? Stay silent? |
-| 2. Who does it claim to be? | We read the **address**, not the pretty name. We look up the official site for impôts, La Poste, Chronopost, EDF, CAF, banks, Microsoft, Apple, … |
-| 3. Check the web addresses | We only look at the **website name** (lookalikes, extra words, coded letters, short links). We do **not** open the page. |
-| 4. Known scam patterns | We compare with common campaigns (fake tax refund, parcel fees, energy bill, bank advisor, CPF, CAF). If live guidance sites cannot be reached, we continue with the built-in list and say so. |
-| 5. Verdict | OK / be careful / likely a scam, with reasons tied to which steps fired. In France: SMS **33700**, email **signal-spam.fr**. |
-
-We do not invent facts that were not in the message or in those checks.
-
-## How to run (first time)
-
-You need a computer and Python 3.11 or newer. An OpenAI key is **not** required for the five checks.
-
-1. Open a terminal in this folder.
-2. Optional: `cp .env.example .env` and fill only what you use.
-3. Install and start:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-streamlit run src/kill_scam/app.py
-```
-
-4. A browser window should open. Paste a message. Select **Check this message**. Watch the five steps.
-
-On Windows, use `.venv\Scripts\activate` instead of `source .venv/bin/activate`.
+Family and anyone who is not going to inspect email headers. V0 is **Paula plus invited family testers**. It is not yet an app the whole internet can sign into.
 
 ## What you will see
+
+1. A **Connect Gmail** button on the home screen.
+2. After you connect: a list of recent inbox messages.
+3. **Check** on one message runs the five steps live.
+4. A plain-language result, the reasons, and **what to do**.
+
+**Check something else** (collapsed, under the inbox) is only for a pasted SMS, WhatsApp text, or mail that is not in this Gmail. It is not the main door.
 
 | Result | Meaning |
 | --- | --- |
@@ -74,78 +46,108 @@ On Windows, use `.venv\Scripts\activate` instead of `source .venv/bin/activate`.
 | Be careful | Something is off — pause and verify another way |
 | Likely a scam | Do not click, do not pay, do not share codes |
 
-Each result lists **which checks** led there.
+## It never sends
+
+```text
+Kill Scam  --read only-->  your Gmail inbox
+Kill Scam  --x-->  send
+Kill Scam  --x-->  delete
+Kill Scam  --x-->  change labels / drafts / settings
+Kill Scam  --x-->  open the phishing page
+```
+
+Google permission requested: `gmail.readonly` only.
+
+## Testing-mode Gmail (Paula + family)
+
+Google will **not** let an unverified app read everyone’s Gmail. Public “everybody on earth” is out of V0.
+
+Paula (or whoever hosts this) turns on a **Google Cloud OAuth consent screen in Testing**:
+
+1. Create a Google Cloud project.
+2. Enable the **Gmail API**.
+3. OAuth consent screen: **External**, status **Testing**.
+4. Add **test users** — Paula’s Gmail and each invited family address. Only those people can connect.
+5. Create an OAuth client of type **Web application**.
+6. Authorized redirect URIs must match exactly:
+   - Laptop: `http://localhost:8501`
+   - Hosted: the public URL you set as `GOOGLE_REDIRECT_URI` (for example `https://your-app.onrender.com`)
+7. Put the client id and secret in the server environment (see below).
+
+The first time a tester clicks Connect Gmail, Google often shows **“Google hasn’t verified this app.”** That is expected. Testers Paula invited can choose **Advanced** → **Go to Kill Scam (unsafe)** — it is Paula’s app, not a stranger’s. Do not invite the whole internet here.
+
+If `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` (or the matching redirect) is missing, the home screen says **Connect Gmail isn’t set up yet**. The app does not crash. **Check something else** still works.
 
 ## Privacy
 
-```text
-Paste box
-  five local checks on your computer
-  we never open the suspicious website
-  not printed in full in the app log
+- Gmail: read-only, recent inbox only. A sign-in token is kept in your browser session. On a laptop it may also be saved under `~/.kill-scam/` on that computer, not in git. On a hosted server, tokens are not written to a shared disk file.
+- We do not log full message bodies. Optional Arize traces use a short hash, not the full mail.
+- Do not paste passwords, one-time codes, or bank PINs into **Check something else**.
+- This is a helper, not a guarantee.
 
-Optional live guidance search
-  only known search hosts
-  never the link from the message
+## Settings (environment)
 
-Optional Arize tracing
-  parent check + each step, with a hash not the full paste
-  stored in YOUR Arize space
-
-Optional Gmail
-  read-only, last 20 inbox items
-  never send, never change mail
-```
-
-- **Do not paste secrets** you want nobody to see (passwords, one-time codes, bank PINs).
-- App logs record length, a short hash, and the verdict — not the full message.
-- If you set `ARIZE_API_KEY` and `ARIZE_SPACE_ID`, traces go to **your** Arize project named `kill-scam`. Leave those blank to skip tracing.
-- Gmail: read-only. A sign-in token is saved under `.kill-scam/`, not in git.
-
-## Settings (`.env`)
+Copy `.env.example` to `.env` on a laptop, or set the same names on the host.
 
 | Setting | Needed? | What it does |
 | --- | --- | --- |
-| `OPENAI_API_KEY` | No | Unused for the five checks today |
-| `OPENAI_MODEL` | No | Defaults to `gpt-4o-mini` if you add a key later |
-| `ARIZE_API_KEY` | No | Turns on tracing to your Arize space |
+| `GOOGLE_CLIENT_ID` | For Connect Gmail | OAuth client id |
+| `GOOGLE_CLIENT_SECRET` | For Connect Gmail | OAuth client secret |
+| `GOOGLE_REDIRECT_URI` | For hosted Gmail | Public callback, e.g. `https://your-app.onrender.com`. Laptop default is `http://localhost:8501` |
+| `ARIZE_API_KEY` | No | Turns on tracing to **your** Arize space. Missing keys: the app still runs |
 | `ARIZE_SPACE_ID` | No | Your Arize space. Project name is always `kill-scam` |
-| `GOOGLE_CLIENT_ID` | No | Turns on Connect Gmail |
-| `GOOGLE_CLIENT_SECRET` | No | Turns on Connect Gmail |
+| `OPENAI_API_KEY` | No | Unused for the five checks today |
+| `KILL_SCAM_HOSTED` | Set to `1` on a host | Do not save Gmail tokens to disk |
 
-If Google keys are missing, **Connect Gmail is hidden**. Paste still works.
+## How to run on a laptop
 
-## Optional Gmail (read-only)
+You need Python 3.11 or newer.
 
-1. In Google Cloud, create a desktop OAuth client.
-2. Put the client id and secret in `.env`.
-3. Restart the app. **Connect Gmail (read-only)** appears.
-4. Sign in, then scan the last 20 inbox messages and check one.
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+cp .env.example .env
+# fill GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET if you want Connect Gmail
+streamlit run src/kill_scam/app.py
+```
 
-If anything fails, use the paste box.
+On Windows, use `.venv\Scripts\activate`.
 
-## Optional Arize tracing
+Open the browser at `http://localhost:8501`. Connect Gmail, or open **Check something else**.
 
-Set `ARIZE_API_KEY` and `ARIZE_SPACE_ID`. Each paste becomes a parent check with five child steps (tool name + summaries + message hash). Missing keys: the app still runs.
+## How to host it (so it works when the laptop is closed)
 
-## Tests and evals
+This is a long-running website, not a `pip` install for family.
 
-Synthetic examples live in `evals/fixtures.json` (made-up scams and ordinary messages, **no real inboxes**). Some examples **need the process** (a lookalike domain a quick glance can miss, and a legitimate-looking school/bank message).
+```bash
+docker build -t kill-scam .
+docker run --rm -p 8080:8080 --env-file .env -e KILL_SCAM_HOSTED=1 -e PORT=8080 kill-scam
+```
+
+There is a `Dockerfile`, plus `render.yaml` (Render) and `fly.toml` (Fly.io). On the host, set `GOOGLE_REDIRECT_URI` to the public https URL and add that **same** URL in the Google Cloud client.
+
+## The five checks
+
+| Step | In everyday words |
+| --- | --- |
+| 1. What does it want? | Click, pay, give a code, install an app, stay silent — and which hook: authority, fear / loss, fake confirmation, reward, urgency, liking, reciprocity, curiosity |
+| 2. Who does it claim to be? | We read the **address**, not the pretty name |
+| 3. Check the web addresses | Lookalikes and short links only. We do **not** open the page |
+| 4. Known scam patterns | Tax refund, parcel fees, and similar. If live guidance sites are down, we continue and say so |
+| 5. Verdict | Looks OK / Be careful / Likely a scam, with what to do. In France: SMS **33700**, email **signal-spam.fr** |
+
+## Tests
 
 ```bash
 pytest
 python -m kill_scam.evals
 ```
 
-The eval script scores **missed scams** vs **false alarms** using the local checklist (no live web search). Unit tests cover URL parsing and lookalike domains **without network**.
+Synthetic examples live in `evals/fixtures.json` (no real inboxes).
 
 ## Safety
 
 This project is **defensive only**. It helps people pause before they click. It does not include phishing kits, attack how-tos, or tools for sending scam mail.
 
 If you are unsure after a check, contact the company or person using a phone number or address you already trust — not a number from the suspicious message.
-
-In France you can also:
-
-- Forward a scam SMS to **33700** (free)
-- Report a scam email at **signal-spam.fr**

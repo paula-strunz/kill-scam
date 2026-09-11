@@ -1,4 +1,4 @@
-"""Kill Scam home screen. The product is the five-step checklist."""
+"""Kill Scam home screen. V0 first path is Connect Gmail, then the five-step checklist."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import streamlit as st
 
 from kill_scam import gmail as gmail_client
 from kill_scam.agent import iter_checklist
-from kill_scam.config import load_env
+from kill_scam.config import GMAIL_LOOKBACK_DAYS, GMAIL_SCAN_LIMIT, load_env
 from kill_scam.links import defang_for_display
 from kill_scam.models import (
     STEP_IDS,
@@ -55,38 +55,198 @@ def main() -> None:
     _inject_styles()
 
     st.title("Kill Scam")
-    st.markdown("### Check a message **before** you click.")
+    st.markdown("### Connect Gmail. We look at recent mail. You see every check.")
     st.write(
-        "Paste an email, text, or WhatsApp message. "
-        "Kill Scam walks through **five checks** you can see. "
-        "This is a process, not a magic score."
+        "Kill Scam reads recent inbox messages and walks through **five checks** "
+        "you can see: what it wants, who it claims to be, the web addresses, "
+        "known campaigns, then **Looks OK / Be careful / Likely a scam**."
+    )
+    st.caption(
+        "It never sends mail. It never deletes mail. It never writes to your mailbox. "
+        "It never opens a suspicious website."
     )
 
-    message = st.text_area(
-        "Paste the suspicious message",
-        height=240,
-        placeholder="Paste the whole message here. Do not click any links in it.",
-        label_visibility="visible",
-        key="paste_box",
-    )
+    _handle_oauth_callback()
+    _gmail_home()
 
-    check_clicked = st.button("Check this message", type="primary", use_container_width=True)
+    with st.expander("Check something else", expanded=False):
+        st.write(
+            "Paste a message that is not in this Gmail — for example an SMS, "
+            "WhatsApp text, or mail someone forwarded. This is the backup path, "
+            "not the usual one."
+        )
+        message = st.text_area(
+            "Paste the suspicious message",
+            height=200,
+            placeholder="Paste the whole message here. Do not click any links in it.",
+            label_visibility="visible",
+            key="paste_box",
+        )
+        if st.button("Check this message", use_container_width=True, key="paste-check"):
+            _run_check(message, source="paste")
 
-    if check_clicked:
-        _run_check(message, source="paste")
-    elif st.session_state.get("last_result"):
+    if st.session_state.get("last_result") and st.session_state.get("last_source") == "paste":
         _show_checklist(st.session_state.get("last_steps") or [])
         _show_result(st.session_state["last_result"])
 
     st.divider()
-    _gmail_section()
-
     st.caption(
-        "Kill Scam never sends mail and never writes to your inbox. "
-        "It never opens the suspicious website. "
+        "V0 is for Paula and invited family testers on a Google testing-mode app. "
+        "Public sign-in for everyone is not part of this version. "
         "Paste stays on this computer unless you turn on Arize tracing. "
-        "This is a helper, not a guarantee."
+        "This is a helper, not a guarantee. Product spec: docs/PRD.md."
     )
+
+
+def _handle_oauth_callback() -> None:
+    params = st.query_params
+    error = params.get("error")
+    if error:
+        st.error("Google sign-in was cancelled or blocked. You can try again.")
+        st.query_params.clear()
+        return
+    code = params.get("code")
+    if not code:
+        return
+    state = params.get("state") or ""
+    expected = str(st.session_state.get("oauth_state") or "")
+    try:
+        token = gmail_client.finish_connect(str(code), str(state), expected)
+    except gmail_client.GmailError as exc:
+        st.error(str(exc))
+        st.query_params.clear()
+        return
+    except Exception:
+        logger.warning("Unexpected OAuth callback failure.")
+        st.error("Could not finish Google sign-in. Try Connect Gmail again.")
+        st.query_params.clear()
+        return
+    st.session_state["gmail_token"] = token
+    st.session_state.pop("gmail_messages", None)
+    st.session_state.pop("oauth_auth_url", None)
+    st.query_params.clear()
+    st.rerun()
+
+
+def _gmail_token() -> dict | None:
+    existing = st.session_state.get("gmail_token")
+    if existing:
+        return existing
+    persisted = gmail_client.load_persisted_token()
+    if persisted:
+        st.session_state["gmail_token"] = persisted
+        return persisted
+    return None
+
+
+def _gmail_home() -> None:
+    status = gmail_client.setup_status()
+    st.subheader(status.headline)
+
+    if not status.configured:
+        st.warning(status.detail)
+        st.info(
+            "Connect Gmail isn’t set up yet on this server. "
+            "The five checks still work if you open **Check something else**."
+        )
+        return
+
+    st.write(status.detail)
+    st.caption(
+        "Google may show an “unverified app” warning. That is expected in testing mode. "
+        "Only testers Paula invited should continue. Public-everyone access is out of V0."
+    )
+
+    token = _gmail_token()
+    connected = gmail_client.is_connected(token)
+
+    cols = st.columns(2)
+    with cols[0]:
+        if not connected:
+            try:
+                if "oauth_auth_url" not in st.session_state:
+                    url, state = gmail_client.authorization_url()
+                    st.session_state["oauth_auth_url"] = url
+                    st.session_state["oauth_state"] = state
+                st.link_button(
+                    "Connect Gmail (read-only)",
+                    st.session_state["oauth_auth_url"],
+                    type="primary",
+                    use_container_width=True,
+                )
+            except gmail_client.GmailError as exc:
+                st.error(str(exc))
+    with cols[1]:
+        if st.button(
+            "Disconnect Gmail",
+            use_container_width=True,
+            disabled=not connected,
+            key="gmail-disconnect",
+        ):
+            gmail_client.disconnect(token)
+            st.session_state.pop("gmail_token", None)
+            st.session_state.pop("gmail_messages", None)
+            st.session_state.pop("oauth_auth_url", None)
+            st.session_state.pop("oauth_state", None)
+            st.info("Gmail disconnected. Kill Scam no longer reads this inbox.")
+            st.rerun()
+
+    if not connected:
+        st.caption(
+            f"After you connect, we list up to {GMAIL_SCAN_LIMIT} inbox messages "
+            f"from the last {GMAIL_LOOKBACK_DAYS} days. One tap on Check runs the five steps."
+        )
+        return
+
+    if st.session_state.get("gmail_messages") is None:
+        try:
+            st.session_state["gmail_messages"] = gmail_client.list_recent_messages(token)
+        except gmail_client.GmailError as exc:
+            st.error(str(exc))
+            st.session_state["gmail_messages"] = []
+
+    if st.button("Refresh recent mail", use_container_width=True, key="gmail-refresh"):
+        try:
+            st.session_state["gmail_messages"] = gmail_client.list_recent_messages(token)
+        except gmail_client.GmailError as exc:
+            st.error(str(exc))
+            return
+
+    messages = st.session_state.get("gmail_messages") or []
+    if not messages:
+        st.info(
+            f"No inbox messages in the last {GMAIL_LOOKBACK_DAYS} days. "
+            "You can still use Check something else."
+        )
+        return
+
+    st.write(
+        f"Showing {len(messages)} recent inbox messages "
+        f"(last {GMAIL_LOOKBACK_DAYS} days, up to {GMAIL_SCAN_LIMIT}). "
+        "Tap **Check** on a message."
+    )
+    for item in messages:
+        with st.container(border=True):
+            st.markdown(f"**{item.subject}**")
+            st.caption(f"{defang_for_display(item.sender)} · {item.date}")
+            if item.snippet:
+                st.write(defang_for_display(item.snippet))
+            if st.button("Check", key=f"check-{item.id}", type="primary"):
+                _check_gmail_message(item.id, token)
+
+            if st.session_state.get("last_gmail_id") == item.id and st.session_state.get("last_result"):
+                _show_checklist(st.session_state.get("last_steps") or [])
+                _show_result(st.session_state["last_result"])
+
+
+def _check_gmail_message(message_id: str, token: dict | None) -> None:
+    try:
+        full = gmail_client.get_message(message_id, token)
+    except gmail_client.GmailError as exc:
+        st.error(str(exc))
+        return
+    st.session_state["last_gmail_id"] = message_id
+    _run_check(full.as_check_text(), source="gmail")
 
 
 def _run_check(message: str, *, source: str) -> None:
@@ -118,8 +278,10 @@ def _run_check(message: str, *, source: str) -> None:
         return
     st.session_state["last_steps"] = result.steps or list(steps.values())
     st.session_state["last_result"] = result
+    st.session_state["last_source"] = source
     _draw_checklist(slot, st.session_state["last_steps"])
-    _show_result(result)
+    if source != "gmail":
+        _show_result(result)
 
 
 def _show_checklist(steps: list[StepResult]) -> None:
@@ -165,68 +327,6 @@ def _show_result(result: CheckResult) -> None:
     if result.advice:
         st.markdown("**What to do**")
         st.write(defang_for_display(result.advice))
-
-
-def _gmail_section() -> None:
-    st.subheader("Optional: check recent Gmail")
-    st.write(
-        "This only reads recent mail. It never sends, never deletes, and never changes anything."
-    )
-
-    if not gmail_client.is_configured():
-        st.info(
-            "Connect Gmail is off until you add Google keys. "
-            "You can still paste a message above. See the README to turn this on."
-        )
-        return
-
-    cols = st.columns(2)
-    with cols[0]:
-        if st.button(
-            "Connect Gmail (read-only)",
-            use_container_width=True,
-            disabled=gmail_client.is_connected(),
-        ):
-            try:
-                status = gmail_client.connect()
-                st.success(status)
-            except gmail_client.GmailError as exc:
-                st.error(str(exc))
-    with cols[1]:
-        if st.button(
-            "Disconnect Gmail",
-            use_container_width=True,
-            disabled=not gmail_client.is_connected(),
-        ):
-            gmail_client.disconnect()
-            st.session_state.pop("gmail_messages", None)
-            st.info("Gmail disconnected on this computer.")
-
-    if not gmail_client.is_connected():
-        st.caption("After you connect, we will list your 20 most recent inbox messages.")
-        return
-
-    if st.button("Scan last 20 messages", use_container_width=True):
-        try:
-            st.session_state["gmail_messages"] = gmail_client.list_recent_messages()
-        except gmail_client.GmailError as exc:
-            st.error(str(exc))
-            return
-
-    messages = st.session_state.get("gmail_messages") or []
-    if not messages:
-        st.caption("Connected as read-only. Scan to see recent subject lines.")
-        return
-
-    st.write(f"Showing {len(messages)} recent messages. Choose one to check.")
-    for item in messages:
-        with st.container(border=True):
-            st.markdown(f"**{item.subject}**")
-            st.caption(f"{defang_for_display(item.sender)} · {item.date}")
-            if item.snippet:
-                st.write(defang_for_display(item.snippet))
-            if st.button("Check this Gmail", key=f"check-{item.id}"):
-                _run_check(item.as_check_text(), source="gmail")
 
 
 def _inject_styles() -> None:

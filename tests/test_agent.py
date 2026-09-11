@@ -45,6 +45,7 @@ def test_lookalike_impots_is_likely_scam_without_network() -> None:
     assert result.verdict == "likely_scam"
     joined = " ".join(result.reasons).lower()
     assert "look" in joined or "not the official" in joined or "not official" in joined
+    assert "persuasion hook" in joined or "authority" in joined or "reward" in joined
 
 
 def test_nested_chronopost_link_is_likely_scam() -> None:
@@ -58,6 +59,14 @@ def test_official_bank_and_school_ham_are_ok() -> None:
     school = classify_message(SCHOOL_HAM, allow_search=False)
     assert bank.verdict == "ok"
     assert school.verdict == "ok"
+
+
+def test_checklist_runs_when_google_oauth_missing(monkeypatch) -> None:
+    monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
+    monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
+    result = classify_message(LOOKALIKE, allow_search=False)
+    assert result.verdict == "likely_scam"
+    assert [step.id for step in result.steps] == list(STEP_IDS)
 
 
 def test_iter_checklist_emits_all_five_steps() -> None:
