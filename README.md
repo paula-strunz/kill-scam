@@ -1,6 +1,6 @@
 # Kill Scam
 
-Product requirements: [docs/PRD.md](docs/PRD.md).
+Product requirements: [docs/PRD.md](docs/PRD.md). After Gmail V0: [OAuth + hosting setup](docs/SETUP.md).
 
 ## TL;DR
 
