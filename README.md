@@ -1,96 +1,153 @@
-# Universal Project Template
+# Kill Scam
+
+Product requirements: [docs/PRD.md](docs/PRD.md). After Gmail V0: [OAuth + hosting setup](docs/SETUP.md).
 
 ## TL;DR
 
-This is a **GitHub template repository** for starting any kind of project: TypeScript, Python, or another stack. Select **Use this template** on GitHub to create a new repository with these files and agent instructions.
+Kill Scam is a small website that **connects to Gmail (read-only)**, looks at recent inbox mail, and walks through **five checks you can see**. Each message gets **Looks OK**, **Be careful**, or **Likely a scam**, plus which persuasion trick fired.
 
-## Create A Repository
-
-1. Select **Use this template** at the top of the GitHub repository page.
-2. Select **Create a new repository**.
-3. Choose its owner, name, and visibility.
-4. Select **Create repository**.
+It **never sends mail**. It **never deletes mail**. It **never writes to your mailbox**. It never opens a suspicious website.
 
 ```text
-This template
+Open Kill Scam
       |
       v
-Use this template
+Connect Gmail (read-only, once)
       |
       v
-Your new repository
+See recent inbox messages (last 7 days, up to 20)
+      |
+      v
+Tap Check on a message
+      |
+      +--> 1. What does it want?  + which hook (authority, fear, …)
+      +--> 2. Who does it claim to be?
+      +--> 3. Check the web addresses (we do NOT open the page)
+      +--> 4. Known scam patterns
+      +--> 5. Looks OK / Be careful / Likely a scam
 ```
 
-The new repository is independent from this template. Keep shared agent instructions in `AGENTS.md`, reusable skills in `.agents/skills`, and reusable rules in `.agents/rules`.
+## Who it is for
 
-## Development Flow
+Family and anyone who is not going to inspect email headers. V0 is **Paula plus invited family testers**. It is not yet an app the whole internet can sign into.
+
+## What you will see
+
+1. A **Connect Gmail** button on the home screen.
+2. After you connect: a list of recent inbox messages.
+3. **Check** on one message runs the five steps live.
+4. A plain-language result, the reasons, and **what to do**.
+
+**Check something else** (collapsed, under the inbox) is only for a pasted SMS, WhatsApp text, or mail that is not in this Gmail. It is not the main door.
+
+| Result | Meaning |
+| --- | --- |
+| Looks OK | The five checks did not find scam pressure |
+| Be careful | Something is off — pause and verify another way |
+| Likely a scam | Do not click, do not pay, do not share codes |
+
+## It never sends
 
 ```text
-Start a project
-      |
-      v
-Choose the right stack for the use case
-      |
-      v
-Follow its established industry practices
-      |
-      v
-Build, test, explain, and verify
+Kill Scam  --read only-->  your Gmail inbox
+Kill Scam  --x-->  send
+Kill Scam  --x-->  delete
+Kill Scam  --x-->  change labels / drafts / settings
+Kill Scam  --x-->  open the phishing page
 ```
 
-## How It Works
+Google permission requested: `gmail.readonly` only.
 
-The template does not force a programming language or framework. The agent must first understand the use case, inspect the repository, and then apply the conventions and best practices of the selected ecosystem.
+## Testing-mode Gmail (Paula + family)
 
-```text
-                         .agents/
-                       /          \
-                  skills/          rules/
-                 /      \          /     \
-       .codex/skills  .claude/skills   tool rule links
+Google will **not** let an unverified app read everyone’s Gmail. Public “everybody on earth” is out of V0.
+
+Paula (or whoever hosts this) turns on a **Google Cloud OAuth consent screen in Testing**:
+
+1. Create a Google Cloud project.
+2. Enable the **Gmail API**.
+3. OAuth consent screen: **External**, status **Testing**.
+4. Add **test users** — Paula’s Gmail and each invited family address. Only those people can connect.
+5. Create an OAuth client of type **Web application**.
+6. Authorized redirect URIs must match exactly:
+   - Laptop: `http://localhost:8501`
+   - Hosted: the public URL you set as `GOOGLE_REDIRECT_URI` (for example `https://your-app.onrender.com`)
+7. Put the client id and secret in the server environment (see below).
+
+The first time a tester clicks Connect Gmail, Google often shows **“Google hasn’t verified this app.”** That is expected. Testers Paula invited can choose **Advanced** → **Go to Kill Scam (unsafe)** — it is Paula’s app, not a stranger’s. Do not invite the whole internet here.
+
+If `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` (or the matching redirect) is missing, the home screen says **Connect Gmail isn’t set up yet**. The app does not crash. **Check something else** still works.
+
+## Privacy
+
+- Gmail: read-only, recent inbox only. A sign-in token is kept in your browser session. On a laptop it may also be saved under `~/.kill-scam/` on that computer, not in git. On a hosted server, tokens are not written to a shared disk file.
+- We do not log full message bodies. Optional Arize traces use a short hash, not the full mail.
+- Do not paste passwords, one-time codes, or bank PINs into **Check something else**.
+- This is a helper, not a guarantee.
+
+## Settings (environment)
+
+Copy `.env.example` to `.env` on a laptop, or set the same names on the host.
+
+| Setting | Needed? | What it does |
+| --- | --- | --- |
+| `GOOGLE_CLIENT_ID` | For Connect Gmail | OAuth client id |
+| `GOOGLE_CLIENT_SECRET` | For Connect Gmail | OAuth client secret |
+| `GOOGLE_REDIRECT_URI` | For hosted Gmail | Public callback, e.g. `https://your-app.onrender.com`. Laptop default is `http://localhost:8501` |
+| `ARIZE_API_KEY` | No | Turns on tracing to **your** Arize space. Missing keys: the app still runs |
+| `ARIZE_SPACE_ID` | No | Your Arize space. Project name is always `kill-scam` |
+| `OPENAI_API_KEY` | No | Unused for the five checks today |
+| `KILL_SCAM_HOSTED` | Set to `1` on a host | Do not save Gmail tokens to disk |
+
+## How to run on a laptop
+
+You need Python 3.11 or newer.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+cp .env.example .env
+# fill GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET if you want Connect Gmail
+streamlit run src/kill_scam/app.py
 ```
 
-`.agents` is the single source of truth. The `.codex` and `.claude` folders contain symbolic links, so both tools use the same skills and rules without duplicated files.
+On Windows, use `.venv\Scripts\activate`.
 
-## Agent Behavior
+Open the browser at `http://localhost:8501`. Connect Gmail, or open **Check something else**.
 
-The shared rules in `AGENTS.md` tell agents to:
+## How to host it (so it works when the laptop is closed)
 
-- Use best practices and established industry patterns appropriate to the current use case.
-- Detect and respect the project's language, framework, architecture, and existing conventions.
-- Assume the user is non-technical unless they say otherwise.
-- Start explanations with a short `TL;DR`.
-- Use concise, ADHD-friendly sections, bullets, and clear next steps.
-- Include a simple ASCII diagram when explaining a system, workflow, architecture, or non-trivial change.
-- Explain jargon in plain language and make tradeoffs explicit.
-- Validate work with the relevant formatter, linter, type checker, and tests.
+This is a long-running website, not a `pip` install for family.
 
-## Structure
-
-```text
-.
-|-- AGENTS.md             # Shared agent instructions
-|-- AGENTS.local.md       # Optional project-specific additions
-|-- CLAUDE.md             # Loads the shared instructions
-|-- CLAUDE.local.md       # Loads local additions
-|-- .env.example          # Safe environment-variable template
-|-- .gitignore            # Common cross-language generated files
-|-- .agents/
-|   |-- skills/           # Canonical reusable skills
-|   `-- rules/            # Canonical reusable rules
-|-- .codex/
-|   |-- skills -> ../.agents/skills
-|   `-- rules  -> ../.agents/rules
-`-- .claude/
-    |-- skills -> ../.agents/skills
-    `-- rules  -> ../.agents/rules
+```bash
+docker build -t kill-scam .
+docker run --rm -p 8080:8080 --env-file .env -e KILL_SCAM_HOSTED=1 -e PORT=8080 kill-scam
 ```
 
-## Start A Project
+There is a `Dockerfile`, plus `render.yaml` (Render) and `fly.toml` (Fly.io). On the host, set `GOOGLE_REDIRECT_URI` to the public https URL and add that **same** URL in the Google Cloud client.
 
-1. Put project-specific context and exceptions in `AGENTS.local.md`.
-2. Add reusable skills to `.agents/skills` and reusable rules to `.agents/rules`.
-3. Add the application code and the standard tooling for its chosen ecosystem.
-4. Ask the agent to implement the first feature; it should explain the plan clearly before making substantial changes.
+## The five checks
 
-Project-specific instructions override generic guidance when they conflict. Security, correctness, accessibility, and maintainability should remain default expectations.
+| Step | In everyday words |
+| --- | --- |
+| 1. What does it want? | Click, pay, give a code, install an app, stay silent — and which hook: authority, fear / loss, fake confirmation, reward, urgency, liking, reciprocity, curiosity |
+| 2. Who does it claim to be? | We read the **address**, not the pretty name |
+| 3. Check the web addresses | Lookalikes and short links only. We do **not** open the page |
+| 4. Known scam patterns | Tax refund, parcel fees, and similar. If live guidance sites are down, we continue and say so |
+| 5. Verdict | Looks OK / Be careful / Likely a scam, with what to do. In France: SMS **33700**, email **signal-spam.fr** |
+
+## Tests
+
+```bash
+pytest
+python -m kill_scam.evals
+```
+
+Synthetic examples live in `evals/fixtures.json` (no real inboxes).
+
+## Safety
+
+This project is **defensive only**. It helps people pause before they click. It does not include phishing kits, attack how-tos, or tools for sending scam mail.
+
+If you are unsure after a check, contact the company or person using a phone number or address you already trust — not a number from the suspicious message.
