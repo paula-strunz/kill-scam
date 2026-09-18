@@ -1,10 +1,12 @@
 # Kill Scam
 
-Product requirements: [docs/PRD.md](docs/PRD.md). After Gmail V0: [OAuth + hosting setup](docs/SETUP.md).
+Product requirements: [docs/PRD.md](docs/PRD.md). Gmail OAuth + hosting: [docs/SETUP.md](docs/SETUP.md).
 
 ## TL;DR
 
-Kill Scam is a small website that **connects to Gmail (read-only)**, looks at recent inbox mail, and walks through **five checks you can see**. Each message gets **Looks OK**, **Be careful**, or **Likely a scam**, plus which persuasion trick fired.
+**What works today without secrets:** open **Check something else**, paste SMS, WhatsApp, or email text, and watch **five visible checks**. You get **Looks OK**, **Be careful**, or **Likely a scam**.
+
+**Connect Gmail** is still the product door in the [PRD](docs/PRD.md). It needs a Google OAuth client and host env vars ([docs/SETUP.md](docs/SETUP.md)). Until those are set, the app says **Connect Gmail isn’t set up yet** — paste still works.
 
 It **never sends mail**. It **never deletes mail**. It **never writes to your mailbox**. It never opens a suspicious website.
 
@@ -12,13 +14,10 @@ It **never sends mail**. It **never deletes mail**. It **never writes to your ma
 Open Kill Scam
       |
       v
-Connect Gmail (read-only, once)
+Check something else  (paste SMS / WhatsApp / email)
       |
       v
-See recent inbox messages (last 7 days, up to 20)
-      |
-      v
-Tap Check on a message
+Five visible steps
       |
       +--> 1. What does it want?  + which hook (authority, fear, …)
       +--> 2. Who does it claim to be?
@@ -27,18 +26,18 @@ Tap Check on a message
       +--> 5. Looks OK / Be careful / Likely a scam
 ```
 
+Connect Gmail (read-only) is the intended inbox path once OAuth is configured: last 7 days, up to 20 messages, same five checks.
+
 ## Who it is for
 
 Family and anyone who is not going to inspect email headers. V0 is **Paula plus invited family testers**. It is not yet an app the whole internet can sign into.
 
 ## What you will see
 
-1. A **Connect Gmail** button on the home screen.
-2. After you connect: a list of recent inbox messages.
-3. **Check** on one message runs the five steps live.
-4. A plain-language result, the reasons, and **what to do**.
-
-**Check something else** (collapsed, under the inbox) is only for a pasted SMS, WhatsApp text, or mail that is not in this Gmail. It is not the main door.
+1. **Check something else** — paste SMS, WhatsApp, or email text. This is the demo that works today with no secrets.
+2. Five steps run live, then **Looks OK / Be careful / Likely a scam**, plus which persuasion trick fired and **what to do**.
+3. A **Connect Gmail** button on the home screen. That is still the product door from the [PRD](docs/PRD.md). After you connect: recent inbox mail, then **Check** on one message.
+4. Connect Gmail needs a Google OAuth client and host env vars ([docs/SETUP.md](docs/SETUP.md)). If those are missing, the home screen says **Connect Gmail isn’t set up yet**. Paste still works.
 
 | Result | Meaning |
 | --- | --- |
@@ -99,22 +98,25 @@ Copy `.env.example` to `.env` on a laptop, or set the same names on the host.
 | `OPENAI_API_KEY` | No | Unused for the five checks today |
 | `KILL_SCAM_HOSTED` | Set to `1` on a host | Do not save Gmail tokens to disk |
 
-## How to run on a laptop
+## Run locally
 
 You need Python 3.11 or newer.
 
 ```bash
+git clone https://github.com/paula-strunz/kill-scam.git
+cd kill-scam
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
 cp .env.example .env
-# fill GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET if you want Connect Gmail
+pip install -e .
 streamlit run src/kill_scam/app.py
 ```
 
 On Windows, use `.venv\Scripts\activate`.
 
-Open the browser at `http://localhost:8501`. Connect Gmail, or open **Check something else**.
+Open the browser at `http://localhost:8501`. **Check something else** works with an empty `.env`. Fill `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` only if you want Connect Gmail ([docs/SETUP.md](docs/SETUP.md)).
+
+For tests, install extras: `pip install -e ".[dev]"`.
 
 ## How to host it (so it works when the laptop is closed)
 
