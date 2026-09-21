@@ -13,7 +13,7 @@ Google Cloud (testing mode)
 Paula + family as test users
         |
         v
-Hosted Kill Scam (Render or Fly)
+Hosted Kill Scam (Render, Fly, or Mac Mini)
         |
         v
 Open URL → Connect Gmail → check one recent message
@@ -134,7 +134,7 @@ Family should open a website, not run Python on Paula’s laptop.
 
 **On this `dev` branch:** there is not yet a `Dockerfile`, `render.yaml`, or `fly.toml`. Those files land with **Gmail V0 PR #6**. Do the deploy steps below after #6 is merged (or from that PR’s branch if you are only practising).
 
-Prefer **Render**. Fly is a short alternative.
+Prefer **Render**. Fly is a short alternative. A **Mac Mini** at home is another option if you would rather not use Render — see **Option: Mac Mini instead of Render** below. That Mini path does **not** skip the Google OAuth checklist in section 1.
 
 ```text
 GitHub `dev` (after #6)
@@ -187,6 +187,50 @@ Then add `https://YOUR-APP.fly.dev` (or your custom domain) as an authorized red
 2. **Connect Gmail** as a test user (Paula or an invited family address).
 3. Check **one recent message**.
 4. If Arize keys are set, open your Arize space and confirm a `kill-scam` trace appeared.
+
+### Option: Mac Mini instead of Render
+
+You can run Kill Scam on a Mac Mini that stays on at home, instead of Render. Family then open a website. This is an **alternative host**, not a replacement for the OAuth steps in section 1.
+
+**The Mini must stay awake.** If it sleeps, the site stops.
+
+1. Open **System Settings** (Apple menu).
+2. Open **Energy** (on some Macs this is still called **Energy Saver**).
+3. Turn on **Prevent automatic sleeping when the display is off**.
+4. Leave the Mini plugged in.
+
+**Install and run on a fixed port (8501).** You need Python 3.11 or newer, same as a laptop.
+
+```bash
+git clone https://github.com/paula-strunz/kill-scam.git
+cd kill-scam
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+streamlit run src/kill_scam/app.py --server.port 8501
+```
+
+Leave that Terminal window running. On the Mini, open `http://localhost:8501`.
+
+**Paste-check works without Google OAuth.** **Check something else** (paste SMS, WhatsApp, or email) works with no secrets. **Connect Gmail** still needs the OAuth client and env vars from section 1 — do that later when you are ready. When you do, put the public URL (the tunnel URL below, if you use one) in **Authorized redirect URIs** and `GOOGLE_REDIRECT_URI`, same idea as Render.
+
+**Family outside home Wi‑Fi need a public tunnel.** Render already gives you a public URL. A Mini on home Wi‑Fi does not. Set up a tunnel **once** (Cloudflare Tunnel or Tailscale Funnel) so relatives not on your home network get a URL that works from anywhere.
+
+```text
+Mac Mini stays awake
+        |
+        v
+Streamlit on port 8501
+        |
+        +--> at home: http://localhost:8501
+        |
+        +--> outside home Wi‑Fi: Cloudflare Tunnel or Tailscale Funnel (once)
+                    |
+                    v
+              public URL for family
+```
+
+Render / Fly steps above stay valid. Use this Mini option only if you prefer a computer you already own.
 
 ---
 

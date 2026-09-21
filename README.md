@@ -129,6 +129,8 @@ docker run --rm -p 8080:8080 --env-file .env -e KILL_SCAM_HOSTED=1 -e PORT=8080 
 
 There is a `Dockerfile`, plus `render.yaml` (Render) and `fly.toml` (Fly.io). On the host, set `GOOGLE_REDIRECT_URI` to the public https URL and add that **same** URL in the Google Cloud client.
 
+A Mac Mini at home is an alternative to Render — see **Option: Mac Mini instead of Render** in [docs/SETUP.md](docs/SETUP.md).
+
 ## The five checks
 
 | Step | In everyday words |
