@@ -1,6 +1,6 @@
 # Kill Scam
 
-Product requirements: [docs/PRD.md](docs/PRD.md). Gmail OAuth + hosting: [docs/SETUP.md](docs/SETUP.md).
+Product requirements: [docs/PRD.md](docs/PRD.md). Gmail OAuth + hosting: [docs/SETUP.md](docs/SETUP.md). Paste-only local demo (no Gmail, no Render): [docs/demo/README.md](docs/demo/README.md).
 
 ## TL;DR
 
