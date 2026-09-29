@@ -4,9 +4,9 @@ Product requirements: [docs/PRD.md](docs/PRD.md). Gmail OAuth + hosting: [docs/S
 
 ## TL;DR
 
-**What works today without secrets:** open **Check something else**, paste SMS, WhatsApp, or email text, and watch **five visible checks**. You get **Looks OK**, **Be careful**, or **Likely a scam**.
+**What works today without secrets:** the paste box is already open. Paste SMS, WhatsApp, or email text, press **Check this message**, and watch **five visible checks**. You get **Looks OK**, **Be careful**, or **Likely a scam**. **Try a sample** fills the box with a made-up message. You still press Check.
 
-**Connect Gmail** is still the product door in the [PRD](docs/PRD.md). It needs a Google OAuth client and host env vars ([docs/SETUP.md](docs/SETUP.md)). Until those are set, the app says **Connect Gmail isn’t set up yet** — paste still works.
+**Connect Gmail** is still the product door in the [PRD](docs/PRD.md) once a Google OAuth client and host env vars are set ([docs/SETUP.md](docs/SETUP.md)). Until those are set, paste is the home screen. A short note says **Connect Gmail is optional and isn’t set up yet**.
 
 It **never sends mail**. It **never deletes mail**. It **never writes to your mailbox**. It never opens a suspicious website.
 
@@ -14,7 +14,7 @@ It **never sends mail**. It **never deletes mail**. It **never writes to your ma
 Open Kill Scam
       |
       v
-Check something else  (paste SMS / WhatsApp / email)
+Paste box  (SMS / WhatsApp / email)  —  optional: Try a sample
       |
       v
 Five visible steps
@@ -34,10 +34,10 @@ Family and anyone who is not going to inspect email headers. V0 is **Paula plus 
 
 ## What you will see
 
-1. **Check something else** — paste SMS, WhatsApp, or email text. This is the demo that works today with no secrets.
+1. **Paste box** — paste SMS, WhatsApp, or email text. This is the door you see when Gmail is not set up. **Try a sample** fills a made-up message; you still press Check.
 2. Five steps run live, then **Looks OK / Be careful / Likely a scam**, plus which persuasion trick fired and **what to do**.
-3. A **Connect Gmail** button on the home screen. That is still the product door from the [PRD](docs/PRD.md). After you connect: recent inbox mail, then **Check** on one message.
-4. Connect Gmail needs a Google OAuth client and host env vars ([docs/SETUP.md](docs/SETUP.md)). If those are missing, the home screen says **Connect Gmail isn’t set up yet**. Paste still works.
+3. A **Connect Gmail** button on the home screen once Google is configured. That is still the product door from the [PRD](docs/PRD.md). After you connect: recent inbox mail, then **Check** on one message. Paste stays under **Check something else**.
+4. Connect Gmail needs a Google OAuth client and host env vars ([docs/SETUP.md](docs/SETUP.md)). If those are missing, paste stays the main door. Connect Gmail is a short optional note.
 
 | Result | Meaning |
 | --- | --- |
@@ -75,13 +75,13 @@ Paula (or whoever hosts this) turns on a **Google Cloud OAuth consent screen in 
 
 The first time a tester clicks Connect Gmail, Google often shows **“Google hasn’t verified this app.”** That is expected. Testers Paula invited can choose **Advanced** → **Go to Kill Scam (unsafe)** — it is Paula’s app, not a stranger’s. Do not invite the whole internet here.
 
-If `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` (or the matching redirect) is missing, the home screen says **Connect Gmail isn’t set up yet**. The app does not crash. **Check something else** still works.
+If `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` (or the matching redirect) is missing, the home screen says **Connect Gmail is optional and isn’t set up yet**. The app does not crash. The paste box is the main door.
 
 ## Privacy
 
 - Gmail: read-only, recent inbox only. A sign-in token is kept in your browser session. On a laptop it may also be saved under `~/.kill-scam/` on that computer, not in git. On a hosted server, tokens are not written to a shared disk file.
 - We do not log full message bodies. Optional Arize traces use a short hash, not the full mail.
-- Do not paste passwords, one-time codes, or bank PINs into **Check something else**.
+- Do not paste passwords, one-time codes, or bank PINs into the paste box.
 - This is a helper, not a guarantee.
 
 ## Settings (environment)
@@ -114,7 +114,7 @@ streamlit run src/kill_scam/app.py
 
 On Windows, use `.venv\Scripts\activate`.
 
-Open the browser at `http://localhost:8501`. **Check something else** works with an empty `.env`. Fill `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` only if you want Connect Gmail ([docs/SETUP.md](docs/SETUP.md)).
+Open the browser at `http://localhost:8501`. The paste box works with an empty `.env`. Fill `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` only if you want Connect Gmail ([docs/SETUP.md](docs/SETUP.md)).
 
 For tests, install extras: `pip install -e ".[dev]"`.
 
