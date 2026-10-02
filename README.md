@@ -47,6 +47,10 @@ Family and anyone who is not going to inspect email headers. V0 is **Paula plus 
 | Be careful | Something is off — pause and verify another way |
 | Likely a scam | Do not click, do not pay, do not share codes |
 
+## Share a result with family
+
+After you press **Check this message**, a **Result card** appears under the verdict. It shows the same words as the checks (**Looks OK**, **Be careful**, or **Likely a scam — do not click**) and one line for each step. The full pasted message is left off the card, so a screenshot does not forward the scam text. Try it locally with the `scam-fake-bank` example: [docs/DEMO.md](docs/DEMO.md).
+
 ## It never sends
 
 ```text
