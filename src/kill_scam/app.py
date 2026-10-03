@@ -20,6 +20,9 @@ from kill_scam.models import (
     StepResult,
 )
 from kill_scam.share_card import (
+    COPY_LABEL,
+    WRONG_LINK,
+    WRONG_NOTE,
     build_share_result,
     format_share_result,
     render_share_result_html,
@@ -58,24 +61,25 @@ def main() -> None:
     init_tracing()
     st.set_page_config(page_title="Kill Scam", page_icon="🛡️", layout="centered")
     _inject_styles()
+    _handle_oauth_callback()
 
-    st.title("Kill Scam")
     paste_result = _paste_result()
     if paste_result is not None:
-        _show_paste_result(paste_result)
-    else:
-        st.markdown("### Connect Gmail. We look at recent mail. You see every check.")
-        st.write(
-            "Kill Scam reads recent inbox messages and walks through **five checks** "
-            "you can see: what it wants, who it claims to be, the web addresses, "
-            "known campaigns, then **Looks OK / Be careful / Likely a scam**."
-        )
-        st.caption(
-            "It never sends mail. It never deletes mail. It never writes to your mailbox. "
-            "It never opens a suspicious website."
-        )
+        _show_warning_screen(paste_result)
+        return
 
-    _handle_oauth_callback()
+    st.title("Kill Scam")
+    st.markdown("### Connect Gmail. We look at recent mail. You see every check.")
+    st.write(
+        "Kill Scam reads recent inbox messages and walks through **five checks** "
+        "you can see: what it wants, who it claims to be, the web addresses, "
+        "known campaigns, then **Looks OK / Be careful / Likely a scam**."
+    )
+    st.caption(
+        "It never sends mail. It never deletes mail. It never writes to your mailbox. "
+        "It never opens a suspicious website."
+    )
+
     _gmail_home()
 
     with st.expander("Check something else", expanded=False):
@@ -286,6 +290,7 @@ def _run_check(message: str, *, source: str) -> None:
     st.session_state["last_result"] = result
     st.session_state["last_source"] = source
     st.session_state["share_copy_open"] = False
+    st.session_state["verdict_wrong"] = False
     _draw_checklist(slot, st.session_state["last_steps"])
     if source != "gmail":
         st.rerun()
@@ -322,17 +327,35 @@ def _paste_result() -> CheckResult | None:
     return None
 
 
-def _show_paste_result(result: CheckResult) -> None:
-    """Phone-first verdict. Spec: specs/002-shareable-result-card.md."""
+def _leave_warning() -> None:
+    """Safe exit. Does not send or delete mail."""
+    for key in (
+        "last_result",
+        "last_source",
+        "last_steps",
+        "share_copy_open",
+        "verdict_wrong",
+    ):
+        st.session_state.pop(key, None)
+
+
+def _show_warning_screen(result: CheckResult) -> None:
+    """One centered warning. Spec: specs/002-shareable-result-card.md."""
     view = build_share_result(result)
-    st.markdown(
-        render_share_result_html(view, color=VERDICT_COLORS.get(result.verdict, "#141414")),
-        unsafe_allow_html=True,
-    )
-    if st.button("Copy summary", key="copy-summary", type="tertiary"):
-        st.session_state["share_copy_open"] = True
-    if st.session_state.get("share_copy_open"):
-        st.code(format_share_result(view), language=None)
+    st.markdown(render_share_result_html(view), unsafe_allow_html=True)
+    _, mid, _ = st.columns([1, 1.35, 1])
+    with mid:
+        if st.button(view.action, key="safe-action", type="primary", use_container_width=True):
+            _leave_warning()
+            st.rerun()
+        if st.button(COPY_LABEL, key="copy-summary", type="tertiary"):
+            st.session_state["share_copy_open"] = True
+        if st.session_state.get("share_copy_open"):
+            st.code(format_share_result(view), language=None)
+        if st.button(WRONG_LINK, key="verdict-wrong", type="tertiary"):
+            st.session_state["verdict_wrong"] = True
+        if st.session_state.get("verdict_wrong"):
+            st.caption(WRONG_NOTE)
 
 
 def _show_result(result: CheckResult) -> None:
@@ -383,73 +406,90 @@ def _inject_styles() -> None:
           }
           .verdict-title { margin: 0.15rem 0 0.4rem; font-size: 1.8rem; font-weight: 750; }
           .verdict-summary { margin: 0; font-size: 1.15rem; }
-          .result-lead {
-            margin: 0.2rem 0 0.4rem;
-            padding: 0;
-            border: 0;
-            background: transparent;
-            max-width: 36rem;
+          [data-testid="stAppViewContainer"] { background: #f7f6f3; }
+          [data-testid="stHeader"] { background: transparent; }
+          .warn-screen {
+            text-align: center;
+            max-width: 34rem;
+            margin: 7vh auto 0;
+            padding: 0 0.5rem 0.5rem;
           }
-          .result-label {
-            margin: 0 0 0.65rem;
+          .warn-mark {
+            width: 5.25rem;
+            height: 5.25rem;
+            margin: 0 auto 1.4rem;
+            border-radius: 50%;
+            border: 2px solid #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.6rem;
+            font-weight: 700;
+            line-height: 1;
+            color: #1a1a1a;
+            background: transparent;
+          }
+          .warn-mark-likely_scam { color: #9b1c1c; border-color: #9b1c1c; }
+          .warn-mark-suspicious { color: #8a5a00; border-color: #8a5a00; }
+          .warn-mark-ok { color: #0f7b3a; border-color: #0f7b3a; }
+          .warn-title {
+            margin: 0 0 0.8rem;
+            color: #1a1a1a;
             font-size: 3.15rem;
             font-weight: 720;
             letter-spacing: -0.03em;
-            line-height: 1.02;
+            line-height: 1.05;
           }
-          .result-why {
-            margin: 0 0 1.35rem;
-            color: #141414;
-            font-size: 1.35rem;
+          .warn-harm {
+            margin: 0 auto 1.15rem;
+            max-width: 26rem;
+            color: #1a1a1a;
+            font-size: 1.28rem;
+            line-height: 1.4;
+          }
+          .warn-reasons { margin: 0 0 0.25rem; }
+          .warn-reason {
+            margin: 0.2rem 0;
+            color: #1a1a1a;
+            font-size: 1.05rem;
             line-height: 1.35;
-            max-width: 28rem;
           }
-          .result-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            margin: 0 0 1.5rem;
-          }
-          .result-chip {
-            display: inline-block;
-            padding: 0.38rem 0.8rem;
+          div[class*="st-key-safe-action"] { margin-top: 1.6rem; }
+          div[class*="st-key-safe-action"] button {
+            background: #1a1a1a;
+            color: #f7f6f3;
+            border: 0;
             border-radius: 999px;
-            background: #f2f3f5;
-            color: #141414;
-            font-size: 0.98rem;
-            font-weight: 650;
-            line-height: 1.2;
+            min-height: 3.3rem;
+            font-size: 1.15rem;
+            font-weight: 680;
           }
-          .result-next {
-            margin: 0;
-            color: #141414;
-            font-size: 1.2rem;
-            font-weight: 650;
-            line-height: 1.35;
-            max-width: 28rem;
-          }
-          div[class*="st-key-copy-summary"] button {
+          div[class*="st-key-copy-summary"] button,
+          div[class*="st-key-verdict-wrong"] button {
             background: transparent;
             border: 0;
             box-shadow: none;
-            color: #4a5562;
+            color: #1a1a1a;
             font-size: 1rem;
-            font-weight: 560;
+            font-weight: 500;
             min-height: 0;
-            padding: 0.15rem 0 0;
+            padding: 0.2rem 0;
             text-decoration: underline;
             text-underline-offset: 0.18em;
           }
-          div[class*="st-key-copy-summary"] button:hover {
-            color: #141414;
+          div[class*="st-key-copy-summary"] button:hover,
+          div[class*="st-key-verdict-wrong"] button:hover,
+          div[class*="st-key-copy-summary"] button:focus,
+          div[class*="st-key-verdict-wrong"] button:focus {
+            color: #1a1a1a;
             border: 0;
+            background: transparent;
           }
           @media (max-width: 640px) {
-            .block-container { padding-top: 0.75rem; }
-            h1 { font-size: 1.7rem !important; }
-            .result-label { font-size: 2.7rem; }
-            .result-why { font-size: 1.2rem; margin-bottom: 1rem; }
-            .result-next { font-size: 1.1rem; }
+            .block-container { padding-top: 0.6rem; }
+            .warn-screen { margin-top: 2.5rem; }
+            .warn-title { font-size: 2.6rem; }
+            .warn-harm { font-size: 1.15rem; }
           }
         </style>
         """,

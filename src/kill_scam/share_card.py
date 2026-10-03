@@ -1,41 +1,50 @@
-"""Calm, phone-first snapshot of a paste-check verdict.
+"""Full-screen paste warning. One mark, one headline, one safe action.
 
-The on-screen result is a short label, one sentence, up to three chips,
-and one next step. It never includes the raw message.
+Not a score, not a chip row, not a boxed report.
 See specs/002-shareable-result-card.md.
 """
 
 from __future__ import annotations
 
 import html
-import re
 from dataclasses import dataclass
 
-from kill_scam.links import defang_for_display
 from kill_scam.models import VERDICT_LABELS, CheckResult
 
-# Short labels for the paste result. Not the longer Gmail verdict box.
 RESULT_LABELS = {
     "ok": "Looks okay",
     "suspicious": "Not sure",
     "likely_scam": "Likely scam",
 }
 
-WHY_LIMIT = 140
-NEXT_LIMIT = 120
-CHIP_LIMIT = 28
-MAX_CHIPS = 3
-DISCLAIMER = "This is a helper, not a guarantee."
-EMPTY_WHY = "We could not sum this up in one sentence."
-
-_DEFAULT_NEXT = {
-    "likely_scam": "Do not click, pay, or share a code.",
-    "suspicious": "Pause and check with a number you already trust.",
-    "ok": "Nothing urgent. Still ignore surprise links.",
+# Our words. Not copied from a browser or wallet warning page.
+HARM = {
+    "likely_scam": "This message may be trying to take money, a code, or a password.",
+    "suspicious": "Something here is off. It may be trying to rush you.",
+    "ok": "We did not see a scam trick in this message.",
 }
 
-# First match wins. Keep each label short enough to scan as a chip.
-_CHIP_RULES: tuple[tuple[str, str], ...] = (
+PRIMARY_ACTION = {
+    "likely_scam": "Don't reply",
+    "suspicious": "Don't reply yet",
+    "ok": "Close",
+}
+
+MARK = {
+    "likely_scam": "!",
+    "suspicious": "!",
+    "ok": "✓",
+}
+
+COPY_LABEL = "Copy summary"
+WRONG_LINK = "This is wrong"
+WRONG_NOTE = "This check can be wrong. If you know the person, contact them a way you already trust."
+
+MAX_REASONS = 2
+REASON_LIMIT = 32
+DISCLAIMER = "This is a helper, not a guarantee."
+
+_REASON_RULES: tuple[tuple[str, str], ...] = (
     ("password", "Asks for a password"),
     ("card number", "Asks for card details"),
     ("gift card", "Wants gift cards"),
@@ -55,106 +64,88 @@ _CHIP_RULES: tuple[tuple[str, str], ...] = (
     ("click", "Pushes a click"),
 )
 
-_SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+")
-
 
 @dataclass(frozen=True)
 class ShareResult:
     verdict: str
     label: str
-    why: str
-    chips: tuple[str, ...]
-    next_step: str
+    harm: str
+    reasons: tuple[str, ...]
+    action: str
+    mark: str
 
 
 def result_label(verdict: str) -> str:
-    """Short paste-result label. Unknown values fall back to the model label."""
+    """Short headline. Unknown values fall back to the model label."""
     if verdict in RESULT_LABELS:
         return RESULT_LABELS[verdict]
     return VERDICT_LABELS.get(verdict, verdict)
 
 
 def build_share_result(result: CheckResult) -> ShareResult:
-    """Build the calm result from a finished check. The raw message is not an input."""
-    why = _one_sentence(result.summary, WHY_LIMIT) if result.summary else EMPTY_WHY
+    """Build the warning from a finished check. The raw message is not an input."""
+    verdict = result.verdict
     return ShareResult(
-        verdict=result.verdict,
-        label=result_label(result.verdict),
-        why=why,
-        chips=signal_chips(result),
-        next_step=_next_step(result),
+        verdict=verdict,
+        label=result_label(verdict),
+        harm=HARM.get(verdict, HARM["suspicious"]),
+        reasons=short_reasons(result),
+        action=PRIMARY_ACTION.get(verdict, "Don't reply"),
+        mark=MARK.get(verdict, "!"),
     )
 
 
-def signal_chips(result: CheckResult) -> tuple[str, ...]:
-    """At most three short signals, in checklist order. Benign notes are skipped."""
+def short_reasons(result: CheckResult) -> tuple[str, ...]:
+    """At most two short reasons. Benign notes are skipped. Not a chip row."""
     found: list[str] = []
     for reason in result.reasons:
-        chip = _chip_for(reason)
-        if chip and chip not in found:
-            found.append(chip)
-        if len(found) == MAX_CHIPS:
+        label = _reason_for(reason)
+        if label and label not in found:
+            found.append(label)
+        if len(found) == MAX_REASONS:
             break
     return tuple(found)
 
 
 def format_share_result(view: ShareResult) -> str:
-    """Plain text for the quiet copy button. Same facts as the screen, no message body."""
-    parts = [view.label, view.why, ""]
-    if view.chips:
-        parts.extend(view.chips)
+    """Plain text for Copy summary. Same facts as the screen, no message body."""
+    parts = [view.label, view.harm, ""]
+    if view.reasons:
+        parts.extend(view.reasons)
         parts.append("")
-    parts.append(view.next_step)
+    parts.append(view.action)
     parts.append("")
     parts.append(DISCLAIMER)
     return "\n".join(parts).strip() + "\n"
 
 
-def render_share_result_html(view: ShareResult, *, color: str) -> str:
-    """Light HTML for the verdict lead. No boxed card chrome. Check text is escaped."""
-    color_safe = html.escape(color, quote=True)
-    chips = ""
-    if view.chips:
-        pills = "".join(
-            f'<span class="result-chip">{html.escape(chip)}</span>' for chip in view.chips
-        )
-        chips = f'<div class="result-chips">{pills}</div>'
+def render_share_result_html(view: ShareResult) -> str:
+    """Centered warning markup. No card chrome. Check text is escaped."""
+    kind = view.verdict if view.verdict in RESULT_LABELS else "unknown"
+    reason_html = "".join(
+        f'<p class="warn-reason">{html.escape(reason)}</p>' for reason in view.reasons
+    )
+    reasons = f'<div class="warn-reasons">{reason_html}</div>' if reason_html else ""
     return (
-        '<div class="result-lead">'
-        f'<p class="result-label" style="color:{color_safe};">{html.escape(view.label)}</p>'
-        f'<p class="result-why">{html.escape(view.why)}</p>'
-        f"{chips}"
-        f'<p class="result-next">{html.escape(view.next_step)}</p>'
+        '<div class="warn-screen">'
+        f'<div class="warn-mark warn-mark-{html.escape(kind, quote=True)}" aria-hidden="true">'
+        f"{html.escape(view.mark)}</div>"
+        f'<p class="warn-title">{html.escape(view.label)}</p>'
+        f'<p class="warn-harm">{html.escape(view.harm)}</p>'
+        f"{reasons}"
         "</div>"
     )
 
 
-def _next_step(result: CheckResult) -> str:
-    sentence = _one_sentence(result.advice, NEXT_LIMIT) if result.advice else ""
-    if sentence and sentence != EMPTY_WHY:
-        return sentence
-    return _DEFAULT_NEXT.get(result.verdict, "Pause before you click or pay.")
-
-
-def _chip_for(reason: str) -> str | None:
+def _reason_for(reason: str) -> str | None:
     text = " ".join((reason or "").lower().split())
     if not text:
         return None
-    if " no " in f" {text} " and text.startswith(("ask: no", "links: no", "identity: no")):
+    if text.startswith(("ask: no", "links: no", "identity: no")):
         return None
     if "could not be reached" in text or "confidence is a bit lower" in text:
         return None
-    for needle, label in _CHIP_RULES:
-        if needle in text:
+    for needle, label in _REASON_RULES:
+        if needle in text and len(label) <= REASON_LIMIT:
             return label
     return None
-
-
-def _one_sentence(text: str, limit: int) -> str:
-    collapsed = " ".join(defang_for_display(text or "").split())
-    if not collapsed:
-        return EMPTY_WHY
-    sentence = _SENTENCE_BREAK.split(collapsed, maxsplit=1)[0].strip()
-    if len(sentence) <= limit:
-        return sentence
-    return sentence[: limit - 3].rstrip() + "..."
