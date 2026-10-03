@@ -59,6 +59,7 @@ _REASON_RULES: tuple[tuple[str, str], ...] = (
     ("not their real site", "Not the real sender"),
     ("not the official site", "Not the official site"),
     ("short link", "Hidden link"),
+    ("not on our official", "Not the official site"),
     ("known pattern", "Known scam pattern"),
     ("persuasion hook", "Pressure wording"),
     ("click", "Pushes a click"),

@@ -171,8 +171,7 @@ def test_fake_bank_fixture_omits_full_message(monkeypatch: pytest.MonkeyPatch) -
     assert result.verdict == "likely_scam"
     assert view.label == "Likely scam"
     assert view.action == "Don't reply"
-    assert len(view.reasons) <= MAX_REASONS
-    assert view.reasons
+    assert view.reasons == ("Not the official site", "Asks for a password")
     assert short_reasons(result) == view.reasons
     assert example.message not in text
     assert example.message not in html

@@ -45,8 +45,8 @@ Open `http://localhost:8501`. An empty `.env` is enough. The app never sends mai
   This message may be trying to take
   money, a code, or a password.
 
+      Not the official site
        Asks for a password
-         Lookalike link
 
          [ Don't reply ]
 
