@@ -4,111 +4,168 @@ import pytest
 
 from kill_scam.agent import classify_message
 from kill_scam.evals import load_fixtures
-from kill_scam.models import STEP_IDS, STEP_TITLES, CheckResult, StepResult
+from kill_scam.models import CheckResult, StepResult
 from kill_scam.share_card import (
-    CARD_VERDICT_LABELS,
+    CHIP_LIMIT,
     DISCLAIMER,
-    OMIT_NOTE,
-    ONE_LINE_LIMIT,
-    SHARE_HINT,
-    build_share_card,
-    format_share_card,
-    render_share_card_html,
-    verdict_headline,
+    MAX_CHIPS,
+    RESULT_LABELS,
+    build_share_result,
+    format_share_result,
+    render_share_result_html,
+    result_label,
+    signal_chips,
 )
 
 
-def _result(verdict: str, summary: str, steps: list[StepResult] | None = None) -> CheckResult:
-    return CheckResult(verdict=verdict, summary=summary, steps=steps or [])
+def _result(
+    verdict: str,
+    summary: str,
+    *,
+    reasons: list[str] | None = None,
+    advice: str = "",
+    steps: list[StepResult] | None = None,
+) -> CheckResult:
+    return CheckResult(
+        verdict=verdict,
+        summary=summary,
+        reasons=reasons or [],
+        advice=advice,
+        steps=steps or [],
+    )
 
 
-def test_headlines_match_existing_verdict_words() -> None:
-    assert CARD_VERDICT_LABELS == {
-        "ok": "Looks OK",
-        "suspicious": "Be careful",
-        "likely_scam": "Likely a scam — do not click",
+def test_labels_are_the_short_verdict_words() -> None:
+    assert RESULT_LABELS == {
+        "ok": "Looks okay",
+        "suspicious": "Not sure",
+        "likely_scam": "Likely scam",
     }
-    assert verdict_headline("ok") == "Looks OK"
-    assert verdict_headline("suspicious") == "Be careful"
-    assert verdict_headline("likely_scam") == "Likely a scam — do not click"
+    assert result_label("ok") == "Looks okay"
+    assert result_label("suspicious") == "Not sure"
+    assert result_label("likely_scam") == "Likely scam"
 
 
-def test_card_lists_five_checks_in_order() -> None:
-    steps = [
-        StepResult(id=step_id, title=STEP_TITLES[step_id], status="done", summary=f"Note for {step_id}")
-        for step_id in reversed(STEP_IDS)
+def test_result_leads_with_one_sentence_and_at_most_three_chips() -> None:
+    reasons = [
+        "Ask: it wants a password, code, or card number.",
+        "Links: a web address looks like an official site but is not.",
+        "Identity: the sending address looks like an official site but is not.",
+        "Campaigns: this matches a known pattern (bank login).",
+        "Ask: the fear persuasion hook fired.",
     ]
-    card = build_share_card(_result("suspicious", "Something is off.", steps))
-    assert [line.step_id for line in card.lines] == list(STEP_IDS)
-    assert [line.title for line in card.lines] == [STEP_TITLES[step_id] for step_id in STEP_IDS]
-    assert card.lines[0].one_line == "Note for ask"
-    text = format_share_card(card)
-    assert text.index("1. What does it want you to do?") < text.index("5. Verdict and what to do")
-
-
-def test_one_line_collapses_whitespace_and_truncates() -> None:
-    secret_tail = "UNIQUE_TAIL_NOT_ON_CARD"
-    long_summary = ("Pay now.\n\n" * 40) + secret_tail
-    card = build_share_card(
+    view = build_share_result(
         _result(
             "likely_scam",
-            long_summary,
-            [
+            "Several checks say this is a scam. Do not click, pay, or share a code.",
+            reasons=reasons,
+            advice="Do not click, do not pay, and do not share codes from this message. Call the bank.",
+        )
+    )
+    assert view.label == "Likely scam"
+    assert view.why == "Several checks say this is a scam."
+    assert "\n" not in view.why
+    assert len(view.chips) == MAX_CHIPS
+    assert view.chips == ("Asks for a password", "Lookalike link", "Fake sender")
+    assert all(len(chip) <= CHIP_LIMIT for chip in view.chips)
+    assert view.next_step == "Do not click, do not pay, and do not share codes from this message."
+    assert "\n" not in view.next_step
+    text = format_share_result(view)
+    assert text.startswith("Likely scam\n")
+    assert "1. What does it want" not in text
+    assert "Result card" not in text
+
+
+def test_why_collapses_whitespace_truncates_and_skips_message_details() -> None:
+    secret_tail = "UNIQUE_TAIL_NOT_ON_CARD"
+    view = build_share_result(
+        _result(
+            "suspicious",
+            ("Pay now.\n\n" * 40) + secret_tail,
+            reasons=["Ask: no click demand.", secret_tail],
+            advice="",
+            steps=[
                 StepResult(
                     id="ask",
-                    title=STEP_TITLES["ask"],
+                    title="1. What does it want you to do?",
                     status="done",
-                    summary="  click   the\nsite  ",
-                    details=[secret_tail, "x" * 500],
+                    summary="full pasted novel " + secret_tail,
+                    details=[secret_tail],
                 )
             ],
         )
     )
-    ask = card.lines[0]
-    assert "\n" not in ask.one_line
-    assert ask.one_line == "click the site"
-    assert len(card.summary) <= ONE_LINE_LIMIT
-    assert secret_tail not in card.summary
-    assert secret_tail not in format_share_card(card)
-    assert all(len(line.one_line) <= ONE_LINE_LIMIT and "\n" not in line.one_line for line in card.lines)
+    assert "\n" not in view.why
+    assert secret_tail not in view.why
+    assert secret_tail not in format_share_result(view)
+    assert view.chips == ()
+    assert view.label == "Not sure"
 
 
-def test_card_defangs_links_and_escapes_html() -> None:
-    summary = 'Confirm at http://nat-example-bank-secure.test/login <script>alert("x")</script>'
-    card = build_share_card(_result("likely_scam", summary))
-    text = format_share_card(card)
-    html = render_share_card_html(card, border="#a11c1c", background="#fde8e8")
+def test_html_is_light_and_escapes_check_text() -> None:
+    summary = 'Confirm at http://nat-example-bank-secure.test/login <script>alert("x")</script> now.'
+    view = build_share_result(
+        _result(
+            "likely_scam",
+            summary,
+            reasons=["Links: a lookalike host."],
+            advice="Do not click.",
+        )
+    )
+    text = format_share_result(view)
+    html = render_share_result_html(view, color="#9b1c1c")
     assert "http://" not in text
     assert "https://" not in text
     assert "nat-example-bank-secure[.]test" in text
     assert "<script>" not in html
     assert "&lt;script&gt;" in html
-    assert SHARE_HINT in text
+    assert "result-lead" in html
+    assert "result-label" in html
+    assert "Likely scam" in html
+    assert "Lookalike link" in html
+    assert "share-card" not in html
+    assert "Result card" not in html
+    assert "border" not in html
     assert DISCLAIMER in text
-    assert OMIT_NOTE in text
-    assert "helper, not a guarantee" in text
+    assert DISCLAIMER not in html
 
 
-def test_missing_steps_still_show_five_titles() -> None:
-    card = build_share_card(_result("ok", "The five checks did not find scam pressure."))
-    assert len(card.lines) == 5
-    assert all(line.one_line == "No extra note for this check." for line in card.lines)
-    assert card.verdict_label == "Looks OK"
+def test_ok_result_has_no_chip_dump() -> None:
+    view = build_share_result(
+        _result(
+            "ok",
+            "The five checks did not find scam pressure.",
+            reasons=[
+                "Ask: no click / pay / code / silence demand.",
+                "Links: no lookalike or hidden short link.",
+                "Identity: no official-org impersonation with a fake address.",
+            ],
+            advice="Use a phone number you already have.",
+        )
+    )
+    assert view.label == "Looks okay"
+    assert view.chips == ()
+    assert view.next_step == "Use a phone number you already have."
+    html = render_share_result_html(view, color="#0f7b3a")
+    assert "result-chip" not in html
 
 
 def test_fake_bank_fixture_omits_full_message(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     example = next(item for item in load_fixtures() if item.id == "scam-fake-bank")
     result = classify_message(example.message, allow_search=False)
-    card = build_share_card(result)
-    text = format_share_card(card)
-    html = render_share_card_html(card, border="#a11c1c", background="#fde8e8")
+    view = build_share_result(result)
+    text = format_share_result(view)
+    html = render_share_result_html(view, color="#9b1c1c")
     assert result.verdict == "likely_scam"
-    assert card.verdict_label == "Likely a scam — do not click"
+    assert view.label == "Likely scam"
+    assert len(view.chips) <= MAX_CHIPS
+    assert view.chips
+    assert signal_chips(result) == view.chips
     assert example.message not in text
     assert example.message not in html
     assert "Your account will be closed tonight" not in text
     assert "http://" not in text
     assert "https://" not in text
-    assert SHARE_HINT in html
-    assert "Result card" in html
+    assert "Result card" not in html
+    assert "border" not in html

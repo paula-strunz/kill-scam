@@ -20,10 +20,9 @@ from kill_scam.models import (
     StepResult,
 )
 from kill_scam.share_card import (
-    build_share_card,
-    format_share_card,
-    render_share_card_html,
-    verdict_headline,
+    build_share_result,
+    format_share_result,
+    render_share_result_html,
 )
 from kill_scam.tracing import init_tracing
 
@@ -40,6 +39,12 @@ VERDICT_BACKGROUNDS = {
     "suspicious": "#fff4d6",
     "likely_scam": "#fde8e8",
 }
+# Longer words kept for the Gmail message box. Paste uses the short labels.
+VERDICT_MARKS = {
+    "ok": "Looks OK",
+    "suspicious": "Be careful",
+    "likely_scam": "Likely a scam — do not click",
+}
 STEP_MARK = {
     "pending": "○",
     "running": "●",
@@ -55,16 +60,20 @@ def main() -> None:
     _inject_styles()
 
     st.title("Kill Scam")
-    st.markdown("### Connect Gmail. We look at recent mail. You see every check.")
-    st.write(
-        "Kill Scam reads recent inbox messages and walks through **five checks** "
-        "you can see: what it wants, who it claims to be, the web addresses, "
-        "known campaigns, then **Looks OK / Be careful / Likely a scam**."
-    )
-    st.caption(
-        "It never sends mail. It never deletes mail. It never writes to your mailbox. "
-        "It never opens a suspicious website."
-    )
+    paste_result = _paste_result()
+    if paste_result is not None:
+        _show_paste_result(paste_result)
+    else:
+        st.markdown("### Connect Gmail. We look at recent mail. You see every check.")
+        st.write(
+            "Kill Scam reads recent inbox messages and walks through **five checks** "
+            "you can see: what it wants, who it claims to be, the web addresses, "
+            "known campaigns, then **Looks OK / Be careful / Likely a scam**."
+        )
+        st.caption(
+            "It never sends mail. It never deletes mail. It never writes to your mailbox. "
+            "It never opens a suspicious website."
+        )
 
     _handle_oauth_callback()
     _gmail_home()
@@ -85,13 +94,9 @@ def main() -> None:
         if st.button("Check this message", use_container_width=True, key="paste-check"):
             _run_check(message, source="paste")
 
-    if st.session_state.get("last_result") and st.session_state.get("last_source") == "paste":
-        _show_checklist(st.session_state.get("last_steps") or [])
-        _show_result(st.session_state["last_result"])
-        _show_share_card(st.session_state["last_result"])
-
     st.divider()
     st.caption(
+        "It never sends mail and never deletes mail. "
         "V0 is for Paula and invited family testers on a Google testing-mode app. "
         "Public sign-in for everyone is not part of this version. "
         "Paste stays on this computer unless you turn on Arize tracing. "
@@ -280,9 +285,10 @@ def _run_check(message: str, *, source: str) -> None:
     st.session_state["last_steps"] = result.steps or list(steps.values())
     st.session_state["last_result"] = result
     st.session_state["last_source"] = source
+    st.session_state["share_copy_open"] = False
     _draw_checklist(slot, st.session_state["last_steps"])
     if source != "gmail":
-        _show_result(result)
+        st.rerun()
 
 
 def _show_checklist(steps: list[StepResult]) -> None:
@@ -307,10 +313,32 @@ def _draw_checklist(slot, steps: list[StepResult]) -> None:
         _show_checklist(steps)
 
 
+def _paste_result() -> CheckResult | None:
+    if st.session_state.get("last_source") != "paste":
+        return None
+    result = st.session_state.get("last_result")
+    if isinstance(result, CheckResult):
+        return result
+    return None
+
+
+def _show_paste_result(result: CheckResult) -> None:
+    """Phone-first verdict. Spec: specs/002-shareable-result-card.md."""
+    view = build_share_result(result)
+    st.markdown(
+        render_share_result_html(view, color=VERDICT_COLORS.get(result.verdict, "#141414")),
+        unsafe_allow_html=True,
+    )
+    if st.button("Copy summary", key="copy-summary", type="tertiary"):
+        st.session_state["share_copy_open"] = True
+    if st.session_state.get("share_copy_open"):
+        st.code(format_share_result(view), language=None)
+
+
 def _show_result(result: CheckResult) -> None:
     color = VERDICT_COLORS.get(result.verdict, "#222")
     background = VERDICT_BACKGROUNDS.get(result.verdict, "#f4f4f4")
-    headline = verdict_headline(result.verdict)
+    headline = VERDICT_MARKS.get(result.verdict, result.label)
     st.markdown(
         f"""
         <div class="verdict" style="background:{background}; border-color:{color};">
@@ -328,21 +356,6 @@ def _show_result(result: CheckResult) -> None:
     if result.advice:
         st.markdown("**What to do**")
         st.write(defang_for_display(result.advice))
-
-
-def _show_share_card(result: CheckResult) -> None:
-    card = build_share_card(result)
-    st.markdown(
-        render_share_card_html(
-            card,
-            border=VERDICT_COLORS.get(result.verdict, "#222"),
-            background=VERDICT_BACKGROUNDS.get(result.verdict, "#f4f4f4"),
-        ),
-        unsafe_allow_html=True,
-    )
-    with st.expander("Copy this summary", expanded=False):
-        st.caption("Same words as the card. The full pasted message is not included.")
-        st.code(format_share_card(card), language=None)
 
 
 def _inject_styles() -> None:
@@ -370,25 +383,74 @@ def _inject_styles() -> None:
           }
           .verdict-title { margin: 0.15rem 0 0.4rem; font-size: 1.8rem; font-weight: 750; }
           .verdict-summary { margin: 0; font-size: 1.15rem; }
-          .share-card {
-            border: 3px solid;
-            border-radius: 16px;
-            padding: 1rem 1.15rem 0.85rem;
-            margin: 0.4rem 0 0.6rem;
+          .result-lead {
+            margin: 0.2rem 0 0.4rem;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            max-width: 36rem;
           }
-          .share-kicker {
+          .result-label {
+            margin: 0 0 0.65rem;
+            font-size: 3.15rem;
+            font-weight: 720;
+            letter-spacing: -0.03em;
+            line-height: 1.02;
+          }
+          .result-why {
+            margin: 0 0 1.35rem;
+            color: #141414;
+            font-size: 1.35rem;
+            line-height: 1.35;
+            max-width: 28rem;
+          }
+          .result-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 0 0 1.5rem;
+          }
+          .result-chip {
+            display: inline-block;
+            padding: 0.38rem 0.8rem;
+            border-radius: 999px;
+            background: #f2f3f5;
+            color: #141414;
+            font-size: 0.98rem;
+            font-weight: 650;
+            line-height: 1.2;
+          }
+          .result-next {
             margin: 0;
-            font-size: 0.85rem;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
+            color: #141414;
+            font-size: 1.2rem;
+            font-weight: 650;
+            line-height: 1.35;
+            max-width: 28rem;
           }
-          .share-title { margin: 0.1rem 0 0.35rem; font-size: 1.7rem; font-weight: 750; line-height: 1.2; }
-          .share-summary { margin: 0 0 0.75rem; font-size: 1.05rem; }
-          .share-line { margin: 0.35rem 0; }
-          .share-line-title { display: block; font-weight: 700; }
-          .share-line-text { display: block; font-size: 0.98rem; }
-          .share-note, .share-disclaimer { margin: 0.55rem 0 0; font-size: 0.95rem; }
-          .share-hint { margin: 0.35rem 0 0; font-size: 1rem; font-weight: 650; }
+          div[class*="st-key-copy-summary"] button {
+            background: transparent;
+            border: 0;
+            box-shadow: none;
+            color: #4a5562;
+            font-size: 1rem;
+            font-weight: 560;
+            min-height: 0;
+            padding: 0.15rem 0 0;
+            text-decoration: underline;
+            text-underline-offset: 0.18em;
+          }
+          div[class*="st-key-copy-summary"] button:hover {
+            color: #141414;
+            border: 0;
+          }
+          @media (max-width: 640px) {
+            .block-container { padding-top: 0.75rem; }
+            h1 { font-size: 1.7rem !important; }
+            .result-label { font-size: 2.7rem; }
+            .result-why { font-size: 1.2rem; margin-bottom: 1rem; }
+            .result-next { font-size: 1.1rem; }
+          }
         </style>
         """,
         unsafe_allow_html=True,

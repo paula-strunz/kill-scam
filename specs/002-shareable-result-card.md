@@ -1,21 +1,40 @@
-# 002 — Shareable result card (Path B paste-check)
+# 002 — Shareable result (Path B paste-check)
 
 ## Intent
 
-After someone finishes **Check this message**, family who are not technical need a clear snapshot of the verdict. They should be able to screenshot that snapshot or copy a short summary without forwarding the raw scam text. Sharing the original message can spread the scam, so the card leaves the full pasted body out. The card uses the same calm words as the five checks. It is a helper for a conversation, not a guarantee, and it never sends or deletes mail.
+A family member pastes a suspicious message and needs to understand the verdict in about 3 seconds on a phone. The outcome is one calm, modern result: a short label, one sentence, a few signals, and one next step. It is not a dense boxed report, and it does not forward the raw scam text. Kill Scam never sends or deletes mail. This is a helper, not a guarantee.
+
+## Design
+
+This section replaces the earlier boxed result card (thick border, “Result card” heading, all five checks written out, and a screenshot hint as the hero).
+
+```text
+Likely scam
+One plain sentence of why.
+
+[ chip ] [ chip ] [ chip ]
+
+One next step.
+
+Copy summary
+```
+
+### Design rules (pass/fail)
+
+1. THE result SHALL lead with the verdict only: a short label (**Likely scam** / **Not sure** / **Looks okay**) in large type, plus one plain sentence of why.
+2. THE screen SHALL show at most three short signal chips, then one next step (what to do). No extra sections.
+3. THE layout SHALL be light, high contrast, lots of whitespace, large type, thin or no heavy borders, no thick boxed card chrome, no dense report, and no dump of the pasted message.
+4. Copy-summary stays, but as a quiet text button under the result, not the visual hero.
+5. Mobile-first: the verdict is readable without scrolling past it on a phone-width viewport.
+6. Behavior stays the same: never send or delete mail; never include the full scam body in the shareable summary; checklist logic is unchanged except presentation.
 
 ## Acceptance criteria
 
-1. After a successful **Check this message** (the paste path behind **Check something else**), the page shows a **Result card** under the five-step verdict.
-2. The card’s verdict label uses the existing on-screen words: **Looks OK**, **Be careful**, or **Likely a scam — do not click**.
-3. The card lists all five check titles, in checklist order, each with one line. Each line is a single line of at most 120 characters.
-4. The card says this is a helper, not a guarantee, and that Kill Scam never sends or deletes mail.
-5. The card includes this hint, exactly: `Screenshot this card to share with family.`
-6. The card states that the original message is not on the card.
-7. The full pasted message body is not on the card, in the on-screen text, or in the copy text.
-8. A plain-text copy of the same card is available. Web addresses in that text are defanged (no `http://` or `https://`).
-9. The card text is built by pure functions that tests can run with no Streamlit, Gmail, or OpenAI key.
-10. Text taken from the check is escaped before it is placed in the card’s HTML.
+1. After **Check this message**, the paste result matches the design rules above.
+2. Labels map as **likely_scam → Likely scam**, **suspicious → Not sure**, **ok → Looks okay**.
+3. The why line is a single sentence. Chips are at most three, each a short phrase. The next step is one line.
+4. The shareable summary is built by pure functions with no Streamlit, Gmail, or OpenAI key. Check text in the HTML is escaped. Web addresses in the summary are defanged (no `http://` or `https://`).
+5. The full pasted message is not in the on-screen result or the copy summary.
 
 ## Out of scope
 
@@ -24,6 +43,7 @@ After someone finishes **Check this message**, family who are not technical need
 - A Chrome extension
 - Auto-posting to social networks
 - Live hosting, Render, or other deploy changes
+- A new design-system dependency
 
 ## Human gate
 

@@ -1,126 +1,160 @@
-"""Compact, copy-friendly snapshot of a paste-check verdict.
+"""Calm, phone-first snapshot of a paste-check verdict.
 
-The card is for a screenshot or a short copy. It never includes the raw message.
+The on-screen result is a short label, one sentence, up to three chips,
+and one next step. It never includes the raw message.
+See specs/002-shareable-result-card.md.
 """
 
 from __future__ import annotations
 
 import html
+import re
 from dataclasses import dataclass
 
 from kill_scam.links import defang_for_display
-from kill_scam.models import STEP_IDS, STEP_TITLES, VERDICT_LABELS, CheckResult
+from kill_scam.models import VERDICT_LABELS, CheckResult
 
-# Same headlines as the verdict box in the app.
-CARD_VERDICT_LABELS = {
-    "ok": "Looks OK",
-    "suspicious": "Be careful",
-    "likely_scam": "Likely a scam — do not click",
+# Short labels for the paste result. Not the longer Gmail verdict box.
+RESULT_LABELS = {
+    "ok": "Looks okay",
+    "suspicious": "Not sure",
+    "likely_scam": "Likely scam",
 }
 
-ONE_LINE_LIMIT = 120
-DISCLAIMER = "This is a helper, not a guarantee. It never sends mail and never deletes mail."
-SHARE_HINT = "Screenshot this card to share with family."
-OMIT_NOTE = "The original message is not on this card."
-EMPTY_LINE = "No extra note for this check."
+WHY_LIMIT = 140
+NEXT_LIMIT = 120
+CHIP_LIMIT = 28
+MAX_CHIPS = 3
+DISCLAIMER = "This is a helper, not a guarantee."
+EMPTY_WHY = "We could not sum this up in one sentence."
+
+_DEFAULT_NEXT = {
+    "likely_scam": "Do not click, pay, or share a code.",
+    "suspicious": "Pause and check with a number you already trust.",
+    "ok": "Nothing urgent. Still ignore surprise links.",
+}
+
+# First match wins. Keep each label short enough to scan as a chip.
+_CHIP_RULES: tuple[tuple[str, str], ...] = (
+    ("password", "Asks for a password"),
+    ("card number", "Asks for card details"),
+    ("gift card", "Wants gift cards"),
+    ("install", "Wants an install"),
+    ("stay silent", "Asks you to hide it"),
+    ("pay", "Asks for money"),
+    ("send money", "Asks for money"),
+    ("web address looks like", "Lookalike link"),
+    ("lookalike", "Lookalike link"),
+    ("sending address looks like", "Fake sender"),
+    ("looks like an official", "Fake sender"),
+    ("not their real site", "Not the real sender"),
+    ("not the official site", "Not the official site"),
+    ("short link", "Hidden link"),
+    ("known pattern", "Known scam pattern"),
+    ("persuasion hook", "Pressure wording"),
+    ("click", "Pushes a click"),
+)
+
+_SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+")
 
 
 @dataclass(frozen=True)
-class ShareCardLine:
-    step_id: str
-    title: str
-    one_line: str
-
-
-@dataclass(frozen=True)
-class ShareCard:
+class ShareResult:
     verdict: str
-    verdict_label: str
-    summary: str
-    lines: tuple[ShareCardLine, ...]
-    disclaimer: str
-    share_hint: str
-    omit_note: str
+    label: str
+    why: str
+    chips: tuple[str, ...]
+    next_step: str
 
 
-def verdict_headline(verdict: str) -> str:
-    """On-screen verdict words. Unknown values fall back to the short label."""
-    if verdict in CARD_VERDICT_LABELS:
-        return CARD_VERDICT_LABELS[verdict]
+def result_label(verdict: str) -> str:
+    """Short paste-result label. Unknown values fall back to the model label."""
+    if verdict in RESULT_LABELS:
+        return RESULT_LABELS[verdict]
     return VERDICT_LABELS.get(verdict, verdict)
 
 
-def build_share_card(result: CheckResult) -> ShareCard:
-    """Build a share card from a finished check. The raw message is not an input."""
-    by_id = {step.id: step for step in result.steps}
-    lines: list[ShareCardLine] = []
-    for step_id in STEP_IDS:
-        step = by_id.get(step_id)
-        title = step.title if step and step.title else STEP_TITLES[step_id]
-        summary = step.summary if step else ""
-        lines.append(ShareCardLine(step_id=step_id, title=title, one_line=_one_line(summary)))
-    summary = _one_line(result.summary) if result.summary else EMPTY_LINE
-    return ShareCard(
+def build_share_result(result: CheckResult) -> ShareResult:
+    """Build the calm result from a finished check. The raw message is not an input."""
+    why = _one_sentence(result.summary, WHY_LIMIT) if result.summary else EMPTY_WHY
+    return ShareResult(
         verdict=result.verdict,
-        verdict_label=verdict_headline(result.verdict),
-        summary=summary,
-        lines=tuple(lines),
-        disclaimer=DISCLAIMER,
-        share_hint=SHARE_HINT,
-        omit_note=OMIT_NOTE,
+        label=result_label(result.verdict),
+        why=why,
+        chips=signal_chips(result),
+        next_step=_next_step(result),
     )
 
 
-def format_share_card(card: ShareCard) -> str:
-    """Plain text a person can copy. Same facts as the on-screen card."""
-    parts = [
-        "Kill Scam result card",
-        "",
-        card.verdict_label,
-        card.summary,
-        "",
-    ]
-    for line in card.lines:
-        parts.append(line.title)
-        parts.append(line.one_line)
+def signal_chips(result: CheckResult) -> tuple[str, ...]:
+    """At most three short signals, in checklist order. Benign notes are skipped."""
+    found: list[str] = []
+    for reason in result.reasons:
+        chip = _chip_for(reason)
+        if chip and chip not in found:
+            found.append(chip)
+        if len(found) == MAX_CHIPS:
+            break
+    return tuple(found)
+
+
+def format_share_result(view: ShareResult) -> str:
+    """Plain text for the quiet copy button. Same facts as the screen, no message body."""
+    parts = [view.label, view.why, ""]
+    if view.chips:
+        parts.extend(view.chips)
         parts.append("")
-    parts.append(card.omit_note)
-    parts.append(card.disclaimer)
-    parts.append(card.share_hint)
+    parts.append(view.next_step)
+    parts.append("")
+    parts.append(DISCLAIMER)
     return "\n".join(parts).strip() + "\n"
 
 
-def render_share_card_html(card: ShareCard, *, border: str, background: str) -> str:
-    """Compact HTML block for the result card. Check text is escaped."""
-    border_safe = html.escape(border, quote=True)
-    background_safe = html.escape(background, quote=True)
-    rows = []
-    for line in card.lines:
-        rows.append(
-            "<div class=\"share-line\">"
-            f"<span class=\"share-line-title\">{html.escape(line.title)}</span>"
-            f"<span class=\"share-line-text\">{html.escape(line.one_line)}</span>"
-            "</div>"
+def render_share_result_html(view: ShareResult, *, color: str) -> str:
+    """Light HTML for the verdict lead. No boxed card chrome. Check text is escaped."""
+    color_safe = html.escape(color, quote=True)
+    chips = ""
+    if view.chips:
+        pills = "".join(
+            f'<span class="result-chip">{html.escape(chip)}</span>' for chip in view.chips
         )
-    body = "\n".join(rows)
+        chips = f'<div class="result-chips">{pills}</div>'
     return (
-        f'<div class="share-card" style="background:{background_safe}; border-color:{border_safe};">'
-        '<p class="share-kicker">Result card</p>'
-        f'<p class="share-title" style="color:{border_safe};">{html.escape(card.verdict_label)}</p>'
-        f'<p class="share-summary">{html.escape(card.summary)}</p>'
-        f"{body}"
-        f'<p class="share-note">{html.escape(card.omit_note)}</p>'
-        f'<p class="share-disclaimer">{html.escape(card.disclaimer)}</p>'
-        f'<p class="share-hint">{html.escape(card.share_hint)}</p>'
+        '<div class="result-lead">'
+        f'<p class="result-label" style="color:{color_safe};">{html.escape(view.label)}</p>'
+        f'<p class="result-why">{html.escape(view.why)}</p>'
+        f"{chips}"
+        f'<p class="result-next">{html.escape(view.next_step)}</p>'
         "</div>"
     )
 
 
-def _one_line(text: str) -> str:
-    collapsed = " ".join((text or "").split())
+def _next_step(result: CheckResult) -> str:
+    sentence = _one_sentence(result.advice, NEXT_LIMIT) if result.advice else ""
+    if sentence and sentence != EMPTY_WHY:
+        return sentence
+    return _DEFAULT_NEXT.get(result.verdict, "Pause before you click or pay.")
+
+
+def _chip_for(reason: str) -> str | None:
+    text = " ".join((reason or "").lower().split())
+    if not text:
+        return None
+    if " no " in f" {text} " and text.startswith(("ask: no", "links: no", "identity: no")):
+        return None
+    if "could not be reached" in text or "confidence is a bit lower" in text:
+        return None
+    for needle, label in _CHIP_RULES:
+        if needle in text:
+            return label
+    return None
+
+
+def _one_sentence(text: str, limit: int) -> str:
+    collapsed = " ".join(defang_for_display(text or "").split())
     if not collapsed:
-        return EMPTY_LINE
-    defanged = " ".join(defang_for_display(collapsed).split())
-    if len(defanged) <= ONE_LINE_LIMIT:
-        return defanged
-    return defanged[: ONE_LINE_LIMIT - 3].rstrip() + "..."
+        return EMPTY_WHY
+    sentence = _SENTENCE_BREAK.split(collapsed, maxsplit=1)[0].strip()
+    if len(sentence) <= limit:
+        return sentence
+    return sentence[: limit - 3].rstrip() + "..."
