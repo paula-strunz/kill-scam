@@ -4,6 +4,26 @@
 
 Product requirements: [docs/PRD.md](docs/PRD.md). Gmail OAuth + hosting: [docs/SETUP.md](docs/SETUP.md). Next work is spec-first: [specs/README.md](specs/README.md).
 
+## See it
+
+**Paste-first (Path B / [#18](https://github.com/paula-strunz/kill-scam/pull/18)).** When Gmail is not set up, the paste box is the home screen. That screen is **not on `main` yet**. On `main` today, paste is under **Check something else** (next section).
+
+Gmail and OpenAI can stay blank. Do not click links in the message. The app never sends or deletes mail.
+
+Captions for every still: [docs/demo/README.md](docs/demo/README.md).
+
+Paste box is the home screen:
+
+![Kill Scam home screen when Gmail is not set up. The paste box is open, with Try a sample and Check this message.](docs/demo/paste-first-home.png)
+
+**Try a sample** fills a made-up bank message. Nothing is sent. You still press Check:
+
+![Short loop of Try a sample filling the paste box with a made-up bank message. Nothing is sent.](docs/demo/paste-first-try-sample.gif)
+
+When Gmail **is** set up, Connect Gmail stays first:
+
+![Home screen when Gmail is configured. Connect Gmail read-only is first. Check something else is collapsed.](docs/demo/paste-first-gmail-configured.png)
+
 ## TL;DR
 
 **What works today without secrets:** open **Check something else**, paste SMS, WhatsApp, or email text, and watch **five visible checks**. You get **Looks OK**, **Be careful**, or **Likely a scam**.
