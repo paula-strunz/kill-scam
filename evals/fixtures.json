@@ -1,7 +1,7 @@
 {
   "name": "kill-scam-v1-classification",
-  "description": "Synthetic obvious scam vs obvious ham. No real people, no real inboxes. Shaped for a later Arize dataset (id, message, gold_label, gold_verdict, category).",
-  "version": 1,
+  "description": "Synthetic obvious scam vs obvious ham, including France-facing authority, trop-perçu, and parcel examples. No real people, no real inboxes. Shaped for a later Arize dataset (id, message, gold_label, gold_verdict, category).",
+  "version": 2,
   "label_field": "gold_label",
   "input_field": "message",
   "output_field": "gold_verdict",
@@ -136,6 +136,46 @@
       "gold_verdict": "ok",
       "notes": "Legitimate-looking school ham. No payment, no lookalike link.",
       "message": "From: Lycée Jean Moulin <secretariat@lycee-jean-moulin.example>\nSubject: Réunion parents-profs\n\nLa réunion a lieu mardi à 18h au gymnase. Merci d'apporter le carnet de correspondance. Pas de paiement en ligne."
+    },
+    {
+      "id": "scam-fr-dgfip-authority",
+      "category": "authority_dgfip",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "PRD authority hook: DGFiP / impôts display name, 24-hour suspension, .test login. Not the real impots.gouv.fr site.",
+      "message": "From: Direction générale des Finances publiques <relance@dgfip-espace.test>\nSubject: Dernière relance DGFiP\n\nLa DGFiP vous informe que votre espace impôts sera suspendu dans les 24 heures. Confirmez votre identité aujourd'hui sur https://dgfip-espace.test/connexion ou le dossier sera fermé."
+    },
+    {
+      "id": "scam-fr-trop-percu",
+      "category": "fake_refund",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "PRD reward hook: precise trop-perçu / remboursement, official tone, asks for a RIB on a .test site. DGFiP does not collect a RIB by email.",
+      "message": "From: Direction générale des Finances publiques <avis@trop-percu-impots.test>\nSubject: Trop-perçu de 186,40 €\n\nBonjour, la DGFiP a calculé un trop-perçu de 186,40 €. Votre remboursement d'impôts est disponible aujourd'hui. Cliquez ici pour le recevoir et indiquez le RIB du compte à créditer :\nhttps://trop-percu-impots.test/remboursement"
+    },
+    {
+      "id": "scam-fr-laposte-lookalike",
+      "category": "parcel_lookalike",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "PRD liking / parcel hook: La Poste display name with a hyphen lookalike on a .test host. Do not fetch the URL.",
+      "message": "From: La Poste <suivi@laposte-fr.test>\nSubject: Colis en attente\n\nVotre colis La Poste est bloqué. Des frais de 1,99 € restent à régler. Payez-les dans les 24 heures sur https://laposte-fr.test/paiement ou le colis sera retourné."
+    },
+    {
+      "id": "ham-fr-ecole-admin",
+      "category": "ecole_ham",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Legitimate FR school note. Administrative parents' meeting, no payment, no link, no code.",
+      "message": "From: École élémentaire Jules Ferry <secretariat@ecole-jules-ferry.test>\nSubject: Information administrative — réunion parents\n\nBonjour, la réunion d'information de l'école a lieu jeudi à 17h30 dans la salle des parents. Merci d'apporter le carnet de liaison. C'est un message administratif : aucune action en ligne, pas de paiement, pas de code."
+    },
+    {
+      "id": "ham-fr-mairie-admin",
+      "category": "admin_ham",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Legitimate FR administrative ham. Mairie counter visit for a school file, no payment and no link.",
+      "message": "From: Mairie de Saint-Exemple <accueil@mairie-saint-exemple.test>\nSubject: Dossier administratif scolaire\n\nBonjour, le dossier administratif de votre enfant peut être complété au guichet de la mairie, mardi ou jeudi matin. Apportez une copie de la pièce d'identité. Aucun paiement n'est demandé."
     }
   ]
 }

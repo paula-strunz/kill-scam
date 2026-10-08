@@ -48,12 +48,36 @@ def test_fixtures_are_synthetic_without_pii() -> None:
         assert allowed or official or synthetic_lookalike, match
 
 
+FR_GOLDEN_LABELS = {
+    "scam-fr-dgfip-authority": GOLD_SCAM,
+    "scam-fr-trop-percu": GOLD_SCAM,
+    "scam-fr-laposte-lookalike": GOLD_SCAM,
+    "ham-fr-ecole-admin": GOLD_HAM,
+    "ham-fr-mairie-admin": GOLD_HAM,
+}
+
+
+def test_france_facing_examples_use_test_domains() -> None:
+    examples = {item.id: item for item in load_fixtures()}
+    assert set(FR_GOLDEN_LABELS) <= set(examples)
+    for example_id, label in FR_GOLDEN_LABELS.items():
+        item = examples[example_id]
+        assert item.gold_label == label
+        assert item.category
+        assert item.notes
+        hosts = re.findall(r"https?://([^/\s]+)", item.message, flags=re.I)
+        emails = re.findall(r"@([A-Za-z0-9.-]+\.[A-Za-z]{2,})", item.message)
+        assert emails
+        for host in (*hosts, *emails):
+            assert host.lower().endswith(".test"), host
+
+
 def test_fixture_file_has_arize_shaped_columns() -> None:
     path = Path(__file__).resolve().parents[1] / "evals" / "fixtures.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert payload["name"] == "kill-scam-v1-classification"
     assert payload["metrics"] == ["missed_scam", "false_alarm"]
-    required = {"id", "message", "gold_label", "gold_verdict", "category"}
+    required = {"id", "message", "gold_label", "gold_verdict", "category", "notes"}
     for raw in payload["examples"]:
         assert required.issubset(raw)
 
@@ -114,6 +138,9 @@ def test_run_eval_with_stub_classifier() -> None:
         "parcel-redelivery-login.test",
         "impots-gouv.fr",
         "chronopost.fr.suivi-colis.test",
+        "dgfip-espace.test",
+        "trop-percu-impots.test",
+        "laposte-fr.test",
     )
 
     def stub(message: str) -> CheckResult:
@@ -137,3 +164,13 @@ def test_local_checklist_eval_has_no_missed_scams() -> None:
     assert lookalike.caught_scam
     bank = next(row for row in report.rows if row.example.id == "ham-bank-statement-official")
     assert bank.true_ham
+    for example_id in (
+        "scam-fr-dgfip-authority",
+        "scam-fr-trop-percu",
+        "scam-fr-laposte-lookalike",
+    ):
+        row = next(item for item in report.rows if item.example.id == example_id)
+        assert row.caught_scam
+    for example_id in ("ham-fr-ecole-admin", "ham-fr-mairie-admin"):
+        row = next(item for item in report.rows if item.example.id == example_id)
+        assert row.true_ham
