@@ -70,3 +70,19 @@ Use that ecosystem's conventions and tools
 ```
 
 Project-specific instructions in `AGENTS.local.md` supplement these shared rules. More specific instructions take precedence when they conflict.
+
+## Spec-driven development
+
+Before a production or feature PR, follow `specs/`. Read [specs/README.md](specs/README.md) and the product brief [docs/PRD.md](docs/PRD.md).
+
+```text
+Spec  -->  Plan  -->  Tasks  -->  Implement
+  |         |          |            |
+  v         v          v            v
+Paula     Paula      Paula        Paula says yes
+gate      gate       gate         before merge
+```
+
+- Write or update the feature’s spec, plan, and tasks first. Paula gates each phase.
+- Shipping Path B (live paste-check) is allowed without new feature code: deploy the paste-check already specified in `specs/001-paste-check-live/`.
+- Never merge without Paula’s explicit yes.

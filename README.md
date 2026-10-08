@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/paula-strunz/kill-scam/actions/workflows/ci.yml/badge.svg)](https://github.com/paula-strunz/kill-scam/actions/workflows/ci.yml)
 
-Product requirements: [docs/PRD.md](docs/PRD.md). Gmail OAuth + hosting: [docs/SETUP.md](docs/SETUP.md).
+Product requirements: [docs/PRD.md](docs/PRD.md). Gmail OAuth + hosting: [docs/SETUP.md](docs/SETUP.md). Next work is spec-first: [specs/README.md](specs/README.md).
 
 ## TL;DR
 
