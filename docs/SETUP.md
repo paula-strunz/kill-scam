@@ -21,6 +21,18 @@ Open URL → Connect Gmail → check one recent message
 
 ---
 
+## Path B (paste-check only)
+
+Skip Google for a first public try. **Check something else** already works with no OAuth keys and no OpenAI key.
+
+`main` already has `Dockerfile` and `render.yaml`. Deploy that branch as it is. A person still has to sign in to Render. Merging a docs change is not what unblocks the site.
+
+Steps: [Path B Render runbook](deploy-path-b.md).
+
+The Google Cloud and hosted Gmail steps below stay as they are. This section does not replace them.
+
+---
+
 ## 1. Google Cloud OAuth (testing mode)
 
 You need a Google account (Paula’s). Work in [Google Cloud Console](https://console.cloud.google.com/). Menu names move around; look for **APIs & Services** → **OAuth consent screen** and **Credentials**.
