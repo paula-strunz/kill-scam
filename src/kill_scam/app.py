@@ -1,4 +1,8 @@
-"""Kill Scam home screen. V0 first path is Connect Gmail, then the five-step checklist."""
+"""Kill Scam home screen.
+
+When Gmail is configured, Connect Gmail is first and paste is the backup.
+When Gmail is not configured, paste is the door for the five-step checklist.
+"""
 
 from __future__ import annotations
 
@@ -11,6 +15,12 @@ import streamlit as st
 from kill_scam import gmail as gmail_client
 from kill_scam.agent import iter_checklist
 from kill_scam.config import GMAIL_LOOKBACK_DAYS, GMAIL_SCAN_LIMIT, load_env
+from kill_scam.home_layout import (
+    GMAIL_OPTIONAL_NOTE,
+    SAFETY_CAPTION,
+    home_layout,
+    sample_fixture_message,
+)
 from kill_scam.links import defang_for_display
 from kill_scam.models import (
     STEP_IDS,
@@ -54,36 +64,25 @@ def main() -> None:
     st.set_page_config(page_title="Kill Scam", page_icon="🛡️", layout="centered")
     _inject_styles()
 
+    status = gmail_client.setup_status()
+    layout = home_layout(status.configured)
+
     st.title("Kill Scam")
-    st.markdown("### Connect Gmail. We look at recent mail. You see every check.")
-    st.write(
-        "Kill Scam reads recent inbox messages and walks through **five checks** "
-        "you can see: what it wants, who it claims to be, the web addresses, "
-        "known campaigns, then **Looks OK / Be careful / Likely a scam**."
-    )
-    st.caption(
-        "It never sends mail. It never deletes mail. It never writes to your mailbox. "
-        "It never opens a suspicious website."
-    )
+    st.markdown(f"### {layout.headline}")
+    st.write(layout.intro)
+    if layout.french_line:
+        st.caption(layout.french_line)
+    st.caption(SAFETY_CAPTION)
 
     _handle_oauth_callback()
-    _gmail_home()
 
-    with st.expander("Check something else", expanded=False):
-        st.write(
-            "Paste a message that is not in this Gmail — for example an SMS, "
-            "WhatsApp text, or mail someone forwarded. This is the backup path, "
-            "not the usual one."
-        )
-        message = st.text_area(
-            "Paste the suspicious message",
-            height=200,
-            placeholder="Paste the whole message here. Do not click any links in it.",
-            label_visibility="visible",
-            key="paste_box",
-        )
-        if st.button("Check this message", use_container_width=True, key="paste-check"):
-            _run_check(message, source="paste")
+    if layout.paste_primary:
+        _paste_panel(backup=False)
+        _gmail_not_configured_note()
+    else:
+        _gmail_home()
+        with st.expander("Check something else", expanded=False):
+            _paste_panel(backup=True)
 
     if st.session_state.get("last_result") and st.session_state.get("last_source") == "paste":
         _show_checklist(st.session_state.get("last_steps") or [])
@@ -139,18 +138,60 @@ def _gmail_token() -> dict | None:
     return None
 
 
+def _fill_paste_with_sample() -> None:
+    """Put one offline fixture into the paste box. Does not run the checklist."""
+    try:
+        st.session_state["paste_box"] = sample_fixture_message()
+        st.session_state.pop("paste_sample_error", None)
+    except LookupError:
+        st.session_state["paste_sample_error"] = (
+            "The sample message could not be loaded. Paste your own message instead."
+        )
+
+
+def _paste_panel(*, backup: bool) -> None:
+    if backup:
+        st.write(
+            "Paste a message that is not in this Gmail — for example an SMS, "
+            "WhatsApp text, or mail someone forwarded. This is the backup path, "
+            "not the usual one."
+        )
+    else:
+        st.write("Paste the whole message in the box. Do not click any links in it.")
+    st.button(
+        "Try a sample",
+        on_click=_fill_paste_with_sample,
+        key="try-sample",
+    )
+    st.caption(
+        "Try a sample fills the box with a made-up bank message from this app. "
+        "You still press Check. Nothing is sent."
+    )
+    sample_error = st.session_state.pop("paste_sample_error", None)
+    if sample_error:
+        st.error(sample_error)
+    message = st.text_area(
+        "Paste the suspicious message",
+        height=200,
+        placeholder="Paste the whole message here. Do not click any links in it.",
+        label_visibility="visible",
+        key="paste_box",
+    )
+    if st.button("Check this message", use_container_width=True, key="paste-check"):
+        _run_check(message, source="paste")
+
+
+def _gmail_not_configured_note() -> None:
+    st.caption(GMAIL_OPTIONAL_NOTE)
+
+
 def _gmail_home() -> None:
     status = gmail_client.setup_status()
-    st.subheader(status.headline)
-
     if not status.configured:
-        st.warning(status.detail)
-        st.info(
-            "Connect Gmail isn’t set up yet on this server. "
-            "The five checks still work if you open **Check something else**."
-        )
+        _gmail_not_configured_note()
         return
 
+    st.subheader(status.headline)
     st.write(status.detail)
     st.caption(
         "Google may show an “unverified app” warning. That is expected in testing mode. "
