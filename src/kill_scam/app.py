@@ -15,10 +15,17 @@ from kill_scam.links import defang_for_display
 from kill_scam.models import (
     STEP_IDS,
     STEP_TITLES,
-    VERDICT_LABELS,
     CheckError,
     CheckResult,
     StepResult,
+)
+from kill_scam.share_card import (
+    WRONG_LINK,
+    WRONG_NOTE,
+    EmailName,
+    build_share_result,
+    email_name,
+    render_share_result_html,
 )
 from kill_scam.tracing import init_tracing
 
@@ -35,6 +42,7 @@ VERDICT_BACKGROUNDS = {
     "suspicious": "#fff4d6",
     "likely_scam": "#fde8e8",
 }
+# Longer words kept for the Gmail message box. Paste uses the short labels.
 VERDICT_MARKS = {
     "ok": "Looks OK",
     "suspicious": "Be careful",
@@ -53,6 +61,12 @@ def main() -> None:
     init_tracing()
     st.set_page_config(page_title="Kill Scam", page_icon="🛡️", layout="centered")
     _inject_styles()
+    _handle_oauth_callback()
+
+    paste_result = _paste_result()
+    if paste_result is not None:
+        _show_warning_screen(paste_result)
+        return
 
     st.title("Kill Scam")
     st.markdown("### Connect Gmail. We look at recent mail. You see every check.")
@@ -66,7 +80,6 @@ def main() -> None:
         "It never opens a suspicious website."
     )
 
-    _handle_oauth_callback()
     _gmail_home()
 
     with st.expander("Check something else", expanded=False):
@@ -85,12 +98,9 @@ def main() -> None:
         if st.button("Check this message", use_container_width=True, key="paste-check"):
             _run_check(message, source="paste")
 
-    if st.session_state.get("last_result") and st.session_state.get("last_source") == "paste":
-        _show_checklist(st.session_state.get("last_steps") or [])
-        _show_result(st.session_state["last_result"])
-
     st.divider()
     st.caption(
+        "It never sends mail and never deletes mail. "
         "V0 is for Paula and invited family testers on a Google testing-mode app. "
         "Public sign-in for everyone is not part of this version. "
         "Paste stays on this computer unless you turn on Arize tracing. "
@@ -279,9 +289,11 @@ def _run_check(message: str, *, source: str) -> None:
     st.session_state["last_steps"] = result.steps or list(steps.values())
     st.session_state["last_result"] = result
     st.session_state["last_source"] = source
+    st.session_state["last_email_name"] = email_name(message) if source == "paste" else None
+    st.session_state["verdict_wrong"] = False
     _draw_checklist(slot, st.session_state["last_steps"])
     if source != "gmail":
-        _show_result(result)
+        st.rerun()
 
 
 def _show_checklist(steps: list[StepResult]) -> None:
@@ -306,10 +318,47 @@ def _draw_checklist(slot, steps: list[StepResult]) -> None:
         _show_checklist(steps)
 
 
+def _paste_result() -> CheckResult | None:
+    if st.session_state.get("last_source") != "paste":
+        return None
+    result = st.session_state.get("last_result")
+    if isinstance(result, CheckResult):
+        return result
+    return None
+
+
+def _leave_warning() -> None:
+    """Safe exit. Does not send or delete mail."""
+    for key in (
+        "last_result",
+        "last_source",
+        "last_steps",
+        "last_email_name",
+        "verdict_wrong",
+    ):
+        st.session_state.pop(key, None)
+
+
+def _show_warning_screen(result: CheckResult) -> None:
+    """One centered warning. Spec: specs/004-warning-screen.md."""
+    name = st.session_state.get("last_email_name")
+    view = build_share_result(result, name if isinstance(name, EmailName) else None)
+    st.markdown(render_share_result_html(view), unsafe_allow_html=True)
+    _, mid, _ = st.columns([1, 1.35, 1])
+    with mid:
+        if st.button(view.action, key="safe-action", type="primary", use_container_width=True):
+            _leave_warning()
+            st.rerun()
+        if st.button(WRONG_LINK, key="verdict-wrong", type="tertiary", use_container_width=True):
+            st.session_state["verdict_wrong"] = True
+        if st.session_state.get("verdict_wrong"):
+            st.markdown(f'<p class="warn-note">{html.escape(WRONG_NOTE)}</p>', unsafe_allow_html=True)
+
+
 def _show_result(result: CheckResult) -> None:
     color = VERDICT_COLORS.get(result.verdict, "#222")
     background = VERDICT_BACKGROUNDS.get(result.verdict, "#f4f4f4")
-    headline = VERDICT_MARKS.get(result.verdict, VERDICT_LABELS.get(result.verdict, result.verdict))
+    headline = VERDICT_MARKS.get(result.verdict, result.label)
     st.markdown(
         f"""
         <div class="verdict" style="background:{background}; border-color:{color};">
@@ -354,6 +403,95 @@ def _inject_styles() -> None:
           }
           .verdict-title { margin: 0.15rem 0 0.4rem; font-size: 1.8rem; font-weight: 750; }
           .verdict-summary { margin: 0; font-size: 1.15rem; }
+          [data-testid="stAppViewContainer"] { background: #f7f6f3; }
+          [data-testid="stHeader"] { background: transparent; }
+          .warn-screen {
+            text-align: center;
+            max-width: 34rem;
+            margin: 7vh auto 0;
+            padding: 0 0.5rem 0.5rem;
+          }
+          .warn-mark {
+            width: 5.25rem;
+            height: 5.25rem;
+            margin: 0 auto 1.4rem;
+            border-radius: 50%;
+            border: 2px solid #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.6rem;
+            font-weight: 700;
+            line-height: 1;
+            color: #1a1a1a;
+            background: transparent;
+          }
+          .warn-mark-likely_scam { color: #9b1c1c; border-color: #9b1c1c; }
+          .warn-mark-suspicious { color: #8a5a00; border-color: #8a5a00; }
+          .warn-mark-ok { color: #0f7b3a; border-color: #0f7b3a; }
+          .warn-title {
+            margin: 0 0 0.8rem;
+            color: #1a1a1a;
+            font-size: 3.15rem !important;
+            font-weight: 720 !important;
+            letter-spacing: -0.03em;
+            line-height: 1.05;
+          }
+          .warn-harm {
+            margin: 0 auto 1.15rem !important;
+            max-width: 26rem;
+            color: #1a1a1a;
+            font-size: 1.28rem !important;
+            line-height: 1.4;
+          }
+          .warn-note {
+            margin: 0.4rem auto 0;
+            max-width: 22rem;
+            text-align: center;
+            color: #444;
+            font-size: 0.95rem;
+            line-height: 1.4;
+          }
+          div[class*="st-key-safe-action"] { margin-top: 1.6rem; }
+          div[class*="st-key-safe-action"] button {
+            background: #1a1a1a;
+            color: #f7f6f3;
+            border: 0;
+            border-radius: 999px;
+            min-height: 3.3rem;
+            font-size: 1.15rem;
+            font-weight: 680;
+          }
+          div[class*="st-key-safe-action"] button:hover,
+          div[class*="st-key-safe-action"] button:focus {
+            background: #000;
+            color: #f7f6f3;
+          }
+          div[class*="st-key-verdict-wrong"] { display: flex; justify-content: center; }
+          div[class*="st-key-verdict-wrong"] button {
+            background: transparent;
+            border: 0;
+            box-shadow: none;
+            color: #1a1a1a;
+            font-size: 1rem;
+            font-weight: 500;
+            min-height: 0;
+            padding: 0.2rem 0;
+            text-decoration: underline;
+            text-underline-offset: 0.18em;
+          }
+          div[class*="st-key-verdict-wrong"] button:hover,
+          div[class*="st-key-verdict-wrong"] button:focus {
+            color: #1a1a1a;
+            border: 0;
+            background: transparent;
+          }
+          @media (max-width: 640px) {
+            .block-container { padding-top: 0.6rem; }
+            .warn-screen { margin-top: 2.5rem; }
+            .warn-title { font-size: 2.6rem !important; }
+            .warn-harm { font-size: 1.15rem !important; }
+          }
         </style>
         """,
         unsafe_allow_html=True,

@@ -47,6 +47,10 @@ Family and anyone who is not going to inspect email headers. V0 is **Paula plus 
 | Be careful | Something is off — pause and verify another way |
 | Likely a scam | Do not click, do not pay, do not share codes |
 
+## One warning after a paste
+
+After you press **Check this message**, the page becomes one warning: a mark, **Likely scam**, **Not sure**, or **Looks okay**, one line that names the email by its sender, and one button. For a likely scam the button says **Don't reply**. **This is wrong** is centered under that button. The pasted message body is left off. Try it with `scam-fake-bank`: [docs/DEMO.md](docs/DEMO.md). Spec: [specs/004-warning-screen.md](specs/004-warning-screen.md).
+
 ## It never sends
 
 ```text
