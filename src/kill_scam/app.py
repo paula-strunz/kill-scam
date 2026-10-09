@@ -22,7 +22,9 @@ from kill_scam.models import (
 from kill_scam.share_card import (
     WRONG_LINK,
     WRONG_NOTE,
+    EmailName,
     build_share_result,
+    email_name,
     render_share_result_html,
 )
 from kill_scam.tracing import init_tracing
@@ -287,6 +289,7 @@ def _run_check(message: str, *, source: str) -> None:
     st.session_state["last_steps"] = result.steps or list(steps.values())
     st.session_state["last_result"] = result
     st.session_state["last_source"] = source
+    st.session_state["last_email_name"] = email_name(message) if source == "paste" else None
     st.session_state["verdict_wrong"] = False
     _draw_checklist(slot, st.session_state["last_steps"])
     if source != "gmail":
@@ -330,6 +333,7 @@ def _leave_warning() -> None:
         "last_result",
         "last_source",
         "last_steps",
+        "last_email_name",
         "verdict_wrong",
     ):
         st.session_state.pop(key, None)
@@ -337,7 +341,8 @@ def _leave_warning() -> None:
 
 def _show_warning_screen(result: CheckResult) -> None:
     """One centered warning. Spec: specs/002-shareable-result-card.md."""
-    view = build_share_result(result)
+    name = st.session_state.get("last_email_name")
+    view = build_share_result(result, name if isinstance(name, EmailName) else None)
     st.markdown(render_share_result_html(view), unsafe_allow_html=True)
     _, mid, _ = st.columns([1, 1.35, 1])
     with mid:
