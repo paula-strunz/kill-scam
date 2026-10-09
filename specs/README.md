@@ -25,5 +25,6 @@ Paula (human) gates each phase. Agents do not skip ahead and do not merge withou
 | --- | --- | --- |
 | [001](001-paste-check-live/spec.md) | Live paste-check hosting (Path B) | Spec / plan / tasks written. Deploy blocked on Render sign-in. |
 | [002](002-gmail-connect-v0/spec.md) | Gmail Connect V0 | Spec stub only. Blocked on Google OAuth. Do not implement yet. |
+| [003](003-gmail-first-home.md) | Gmail-first home | Spec draft. Paula approved modify for the Likely scam label only. |
 
 Path B means: put the **already built** paste-check on a public URL. It does not need new feature code and it does not need Gmail.
