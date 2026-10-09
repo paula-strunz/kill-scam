@@ -23,7 +23,7 @@ Path B ([001](../001-paste-check-live/spec.md)) may go live without this feature
 
 ## Intent
 
-A Gmail-connected, read-only scan for invited test users. The person connects once. Kill Scam looks at new or recent mail and says whether a flagged message looks like a scam, with the reason visible. It never sends, deletes, or writes to the mailbox.
+A Gmail-connected scan for invited test users. The person connects once. Kill Scam looks at new or recent mail and says whether a flagged message looks like a scam, with the reason visible. It only adds a **Likely scam** label. It never sends or deletes mail.
 
 V0 is Paula plus invited family or test users on a Google Cloud OAuth consent screen in **testing** mode. It is not a public app for everyone.
 
@@ -41,7 +41,7 @@ V0 is Paula plus invited family or test users on a Google Cloud OAuth consent sc
 ## Out of scope
 
 - Unverified OAuth for the whole internet
-- Sending, deleting, labeling, or otherwise writing mail
+- Sending, deleting, archiving, or moving mail
 - SMS, letters, phone scams
 - Auto-delete and auto-reply
 - Mac Mini as a requirement for this spec

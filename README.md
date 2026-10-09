@@ -10,7 +10,7 @@ Product requirements: [docs/PRD.md](docs/PRD.md). Gmail OAuth + hosting: [docs/S
 
 **Connect Gmail** is still the product door in the [PRD](docs/PRD.md). It needs a Google OAuth client and host env vars ([docs/SETUP.md](docs/SETUP.md)). Until those are set, the app says **Connect Gmail isn’t set up yet** — paste still works.
 
-It **never sends mail**. It **never deletes mail**. It **never writes to your mailbox**. It never opens a suspicious website.
+It only adds one **Likely scam** label in Gmail. It **never sends** or **deletes** mail. It never opens a suspicious website.
 
 ```text
 Open Kill Scam
@@ -28,7 +28,7 @@ Five visible steps
       +--> 5. Looks OK / Be careful / Likely a scam
 ```
 
-Connect Gmail (read-only) is the intended inbox path once OAuth is configured: last 7 days, up to 20 messages, same five checks.
+Connect Gmail is the intended inbox path once OAuth is configured: last 7 days, up to 20 messages, same five checks. The only mailbox change is one **Likely scam** label.
 
 ## Who it is for
 
@@ -50,14 +50,15 @@ Family and anyone who is not going to inspect email headers. V0 is **Paula plus 
 ## It never sends
 
 ```text
-Kill Scam  --read only-->  your Gmail inbox
-Kill Scam  --x-->  send
-Kill Scam  --x-->  delete
-Kill Scam  --x-->  change labels / drafts / settings
-Kill Scam  --x-->  open the phishing page
+Kill Scam  --reads-->  your Gmail inbox
+Kill Scam  --adds-->   one Likely scam label
+Kill Scam  --x-->      send
+Kill Scam  --x-->      delete
+Kill Scam  --x-->      archive, move, or drafts
+Kill Scam  --x-->      open the phishing page
 ```
 
-Google permission requested: `gmail.readonly` only.
+The code on main still requests `gmail.readonly` only. [Spec 003](specs/003-gmail-first-home.md) moves to `gmail.modify` for that one label.
 
 ## Testing-mode Gmail (Paula + family)
 
@@ -81,7 +82,7 @@ If `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` (or the matching redirect) is mi
 
 ## Privacy
 
-- Gmail: read-only, recent inbox only. A sign-in token is kept in your browser session. On a laptop it may also be saved under `~/.kill-scam/` on that computer, not in git. On a hosted server, tokens are not written to a shared disk file.
+- Gmail: recent inbox, plus one **Likely scam** label on mail the checks flag. A sign-in token is kept in your browser session. On a laptop it may also be saved under `~/.kill-scam/` on that computer, not in git. On a hosted server, tokens are not written to a shared disk file.
 - We do not log full message bodies. Optional Arize traces use a short hash, not the full mail.
 - Do not paste passwords, one-time codes, or bank PINs into **Check something else**.
 - This is a helper, not a guarantee.

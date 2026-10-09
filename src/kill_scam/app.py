@@ -62,7 +62,7 @@ def main() -> None:
         "known campaigns, then **Looks OK / Be careful / Likely a scam**."
     )
     st.caption(
-        "It never sends mail. It never deletes mail. It never writes to your mailbox. "
+        "It only adds a Likely scam label. It never sends or deletes mail. "
         "It never opens a suspicious website."
     )
 
