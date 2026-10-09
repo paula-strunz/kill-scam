@@ -20,11 +20,9 @@ from kill_scam.models import (
     StepResult,
 )
 from kill_scam.share_card import (
-    COPY_LABEL,
     WRONG_LINK,
     WRONG_NOTE,
     build_share_result,
-    format_share_result,
     render_share_result_html,
 )
 from kill_scam.tracing import init_tracing
@@ -289,7 +287,6 @@ def _run_check(message: str, *, source: str) -> None:
     st.session_state["last_steps"] = result.steps or list(steps.values())
     st.session_state["last_result"] = result
     st.session_state["last_source"] = source
-    st.session_state["share_copy_open"] = False
     st.session_state["verdict_wrong"] = False
     _draw_checklist(slot, st.session_state["last_steps"])
     if source != "gmail":
@@ -333,7 +330,6 @@ def _leave_warning() -> None:
         "last_result",
         "last_source",
         "last_steps",
-        "share_copy_open",
         "verdict_wrong",
     ):
         st.session_state.pop(key, None)
@@ -348,14 +344,10 @@ def _show_warning_screen(result: CheckResult) -> None:
         if st.button(view.action, key="safe-action", type="primary", use_container_width=True):
             _leave_warning()
             st.rerun()
-        if st.button(COPY_LABEL, key="copy-summary", type="tertiary"):
-            st.session_state["share_copy_open"] = True
-        if st.session_state.get("share_copy_open"):
-            st.code(format_share_result(view), language=None)
-        if st.button(WRONG_LINK, key="verdict-wrong", type="tertiary"):
+        if st.button(WRONG_LINK, key="verdict-wrong", type="tertiary", use_container_width=True):
             st.session_state["verdict_wrong"] = True
         if st.session_state.get("verdict_wrong"):
-            st.caption(WRONG_NOTE)
+            st.markdown(f'<p class="warn-note">{html.escape(WRONG_NOTE)}</p>', unsafe_allow_html=True)
 
 
 def _show_result(result: CheckResult) -> None:
@@ -435,8 +427,8 @@ def _inject_styles() -> None:
           .warn-title {
             margin: 0 0 0.8rem;
             color: #1a1a1a;
-            font-size: 3.15rem;
-            font-weight: 720;
+            font-size: 3.15rem !important;
+            font-weight: 720 !important;
             letter-spacing: -0.03em;
             line-height: 1.05;
           }
@@ -444,15 +436,16 @@ def _inject_styles() -> None:
             margin: 0 auto 1.15rem;
             max-width: 26rem;
             color: #1a1a1a;
-            font-size: 1.28rem;
+            font-size: 1.28rem !important;
             line-height: 1.4;
           }
-          .warn-reasons { margin: 0 0 0.25rem; }
-          .warn-reason {
-            margin: 0.2rem 0;
-            color: #1a1a1a;
-            font-size: 1.05rem;
-            line-height: 1.35;
+          .warn-note {
+            margin: 0.4rem auto 0;
+            max-width: 22rem;
+            text-align: center;
+            color: #444;
+            font-size: 0.95rem;
+            line-height: 1.4;
           }
           div[class*="st-key-safe-action"] { margin-top: 1.6rem; }
           div[class*="st-key-safe-action"] button {
@@ -464,7 +457,12 @@ def _inject_styles() -> None:
             font-size: 1.15rem;
             font-weight: 680;
           }
-          div[class*="st-key-copy-summary"] button,
+          div[class*="st-key-safe-action"] button:hover,
+          div[class*="st-key-safe-action"] button:focus {
+            background: #000;
+            color: #f7f6f3;
+          }
+          div[class*="st-key-verdict-wrong"] { display: flex; justify-content: center; }
           div[class*="st-key-verdict-wrong"] button {
             background: transparent;
             border: 0;
@@ -477,9 +475,7 @@ def _inject_styles() -> None:
             text-decoration: underline;
             text-underline-offset: 0.18em;
           }
-          div[class*="st-key-copy-summary"] button:hover,
           div[class*="st-key-verdict-wrong"] button:hover,
-          div[class*="st-key-copy-summary"] button:focus,
           div[class*="st-key-verdict-wrong"] button:focus {
             color: #1a1a1a;
             border: 0;
@@ -488,8 +484,8 @@ def _inject_styles() -> None:
           @media (max-width: 640px) {
             .block-container { padding-top: 0.6rem; }
             .warn-screen { margin-top: 2.5rem; }
-            .warn-title { font-size: 2.6rem; }
-            .warn-harm { font-size: 1.15rem; }
+            .warn-title { font-size: 2.6rem !important; }
+            .warn-harm { font-size: 1.15rem !important; }
           }
         </style>
         """,
