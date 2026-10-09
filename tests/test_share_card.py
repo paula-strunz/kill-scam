@@ -121,6 +121,7 @@ def test_this_is_wrong_is_centered_full_width() -> None:
     source = APP.read_text(encoding="utf-8")
     assert 'key="verdict-wrong", type="tertiary", use_container_width=True' in source
     assert 'div[class*="st-key-verdict-wrong"] { display: flex; justify-content: center; }' in source
+    assert "margin: 0 auto 1.15rem !important;" in source
 
 
 def test_fake_bank_fixture(monkeypatch: pytest.MonkeyPatch) -> None:

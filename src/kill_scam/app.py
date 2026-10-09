@@ -438,7 +438,7 @@ def _inject_styles() -> None:
             line-height: 1.05;
           }
           .warn-harm {
-            margin: 0 auto 1.15rem;
+            margin: 0 auto 1.15rem !important;
             max-width: 26rem;
             color: #1a1a1a;
             font-size: 1.28rem !important;
