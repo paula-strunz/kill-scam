@@ -35,25 +35,21 @@ Open `http://localhost:8501`. An empty `.env` is enough. The app never sends mai
 2. Copy the `message` for fixture `scam-fake-bank` in `evals/fixtures.json` (a made-up bank alert).
 3. Paste it into the box. Do not click the link inside it.
 4. Press **Check this message**.
-5. The page becomes one light, centered warning. A mark, a large **Likely scam**, one short paragraph, at most two short reasons, and one button: **Don't reply**. **Copy summary** and **This is wrong** are quiet text under that button.
+5. The page becomes one light, centered warning. A mark, a large **Likely scam**, one harm line that names the sender, and one button: **Don't reply**. **This is wrong** is centered under that button.
 
 ```text
-              ( ! )
+            ( ! )
 
-          Likely scam
+         Likely scam
 
-  This message may be trying to take
-  money, a code, or a password.
+ The email from 'National Example Bank Security'
+ may be trying to take your password.
 
-      Not the official site
-       Asks for a password
+        [ Don't reply ]
 
-         [ Don't reply ]
-
-          Copy summary
-          This is wrong
+         This is wrong
 ```
 
-The full pasted message is not on that screen. **Don't reply** leaves the warning. It does not send or delete mail. Spec: [specs/002-shareable-result-card.md](../specs/002-shareable-result-card.md).
+The full pasted message is not on that screen. **Don't reply** leaves the warning. It does not send or delete mail. Spec: [specs/004-warning-screen.md](../specs/004-warning-screen.md).
 
 More on the five checks: [README](../README.md). Product brief: [docs/PRD.md](PRD.md).

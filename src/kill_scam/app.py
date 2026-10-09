@@ -340,7 +340,7 @@ def _leave_warning() -> None:
 
 
 def _show_warning_screen(result: CheckResult) -> None:
-    """One centered warning. Spec: specs/002-shareable-result-card.md."""
+    """One centered warning. Spec: specs/004-warning-screen.md."""
     name = st.session_state.get("last_email_name")
     view = build_share_result(result, name if isinstance(name, EmailName) else None)
     st.markdown(render_share_result_html(view), unsafe_allow_html=True)

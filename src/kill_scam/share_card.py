@@ -1,7 +1,7 @@
 """Full-screen paste warning. One mark, one headline, one harm line, one safe action.
 
 The harm line names the email by sender and subject only. The body never
-reaches the screen. See specs/002-shareable-result-card.md.
+reaches the screen. See specs/004-warning-screen.md.
 """
 
 from __future__ import annotations
