@@ -26,9 +26,9 @@ Paula’s own observation: spam still lands in the official inbox. Copy-paste in
 **First function: a Gmail-connected agent.**
 
 1. Person opens Kill Scam.
-2. They connect Gmail once (read-only).
+2. They connect Gmail once. The **Likely scam** label needs Gmail's modify permission (see [specs/003-gmail-first-home.md](../specs/003-gmail-first-home.md)).
 3. The agent runs: it looks at new / recent mail and says whether each flagged message looks like a scam, with a visible why.
-4. It never sends mail. It never deletes mail. It never writes to the mailbox.
+4. It only adds a **Likely scam** label. It never sends or deletes mail.
 
 Install for V0 means a small hosted app, not `pip` and not “paste the email body.”
 

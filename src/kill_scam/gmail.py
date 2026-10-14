@@ -107,8 +107,8 @@ def setup_status() -> GmailSetupStatus:
         configured=True,
         headline="Connect Gmail (read-only)",
         detail=(
-            "This only reads recent inbox mail. It never sends, never deletes, "
-            "and never changes anything in Gmail."
+            "This reads recent inbox mail. It only adds a Likely scam label. "
+            "It never sends or deletes mail."
         ),
         redirect_uri=redirect,
     )
