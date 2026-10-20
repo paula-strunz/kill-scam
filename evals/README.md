@@ -2,6 +2,8 @@
 
 These files are practice messages for Kill Scam. They are made up. They are not from a real inbox, and they do not need OpenAI, Gmail, or Arize keys.
 
+`fixtures.json` is the main answer key. A second file, `fixtures_003_label.json`, is only for the Gmail label rule in spec 003. That rule is explained at the bottom of this page.
+
 ```text
 evals/fixtures.json
         |
@@ -75,3 +77,31 @@ If the package is installed, `kill-scam-eval` is the same command.
 Both commands use the built-in checklist. They do not call OpenAI, they do not connect to Gmail, and they do not send traces to Arize. A missing `OPENAI_API_KEY`, Google client, or `ARIZE_API_KEY` is expected and fine.
 
 Exit code `0` means no missed scam. Exit code `1` means at least one scam was marked ok. A false alarm is printed in the report and does not change that exit code.
+
+## Spec 003 label fixtures
+
+`fixtures_003_label.json` holds 20 made-up messages for one decision: should Gmail get a red **Likely scam** label?
+
+Kill Scam adds that label only when the checklist verdict is `likely_scam`. A `suspicious` verdict, an `ok` verdict, an error, or a timeout gets no label.
+
+```text
+checklist verdict
+        |
+        +-- likely_scam --> add "Likely scam"
+        |
+        +-- suspicious ----> no label
+        +-- ok ------------> no label
+        +-- error/timeout -> no label
+```
+
+| Bucket | Count | `gold_verdict` | Gmail label |
+| --- | ---: | --- | --- |
+| Likely scam | 8 | `likely_scam` | yes |
+| Suspicious | 6 | `suspicious` | no |
+| Safe | 6 | `ok` | no |
+
+`gold_label` stays `scam` or `ham` so the rows can still become an Arize dataset later. Suspicious rows use `gold_label: ham` because they must not get the Gmail label. The label rule follows `gold_verdict`.
+
+Every email and web address uses `example.com` or `example.fr` only. Those names are reserved for examples. Do not open them. French bank, parcel, and office names in this file are lookalikes, not real services.
+
+A later check (task T8) will report `label` or `skip` on this set. This file does not connect to Gmail.
