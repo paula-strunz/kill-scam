@@ -4,6 +4,8 @@
 
 Product requirements: [docs/PRD.md](docs/PRD.md). Gmail OAuth + hosting: [docs/SETUP.md](docs/SETUP.md). Next work is spec-first: [specs/README.md](specs/README.md).
 
+Case study: [docs/CASE_STUDY.md](docs/CASE_STUDY.md). Demo script: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+
 ## TL;DR
 
 **What works today without secrets:** open **Check something else**, paste SMS, WhatsApp, or email text, and watch **five visible checks**. You get **Looks OK**, **Be careful**, or **Likely a scam**.
