@@ -13,6 +13,8 @@ GMAIL_SCAN_LIMIT = 20
 GMAIL_LOOKBACK_DAYS = 7
 DEFAULT_MODEL = "gpt-4o-mini"
 GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+# Paula approved this on 9 Oct 2026, only so the app can add the Likely scam label.
+GMAIL_MODIFY_SCOPE = "https://www.googleapis.com/auth/gmail.modify"
 DEFAULT_GMAIL_REDIRECT_URI = "http://localhost:8501"
 
 
