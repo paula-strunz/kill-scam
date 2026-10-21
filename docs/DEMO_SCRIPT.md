@@ -10,6 +10,6 @@ My first version asked people to paste a suspicious message. Then I admitted it:
 
 Here's the new plan. A family helper connects Gmail once. Kill Scam runs five checks on new mail and adds one red Likely scam label to a likely scam. It never sends, deletes, archives, or moves mail. When it isn't sure, it adds no label.
 
-Watch the screen. I paste a fake La Banque Postale message. The warning says Likely scam, names the sender, not the message body, and offers one button: Don't reply.
+Watch the screen. I paste a fake La Banque Postale message. The warning says Likely scam, names the sender, and leaves the message body off the screen. One button: Don't reply.
 
-The paste demo and warning screen are on main. The Gmail watcher is spec'd and in progress, not live until Google sign-in. Repo is paula-strunz/kill-scam. Thanks for watching.
+The paste demo and warning screen are on main. The Gmail watcher is not live yet. It waits on Google sign-in. Repo is paula-strunz/kill-scam. Thanks for watching.

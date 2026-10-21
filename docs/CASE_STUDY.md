@@ -2,58 +2,53 @@
 
 **A helper connects Gmail once. Kill Scam puts one red "Likely scam" label on the scams.**
 
-Kill Scam is a home-use anti-scam helper for non-tech family members. I'm Paula Struncova, an AI product manager and not a developer. I built it with AI agents and spec-driven development. Repo: [paula-strunz/kill-scam](https://github.com/paula-strunz/kill-scam).
+Kill Scam helps non-tech family. I'm Paula Struncova, an AI product manager. Repo: [paula-strunz/kill-scam](https://github.com/paula-strunz/kill-scam).
 
 ## Problem
 
-Scam mail still lands in the inbox after Gmail filters it, with clean grammar and real-looking logos. My parents open Gmail every day. They will not learn a new app or read a risk score.
+Scam mail still lands in the inbox, with clean grammar and real-looking logos. My parents open Gmail every day. They will not learn a new app or read a risk score.
 
 ## The pivot
 
-The first version was a paste-check: copy a suspicious message in, get a verdict. On 8 Oct 2026 I admitted the obvious: nobody will be pasting anything. My own PRD already said paste was a fallback and never the main door. Paste was a builder's assumption, and real users broke it.
-
-Paste-check now stays as a demo only, under **Check something else**.
+The first version asked people to paste a message. On 8 Oct 2026 I saw that nobody will paste. The product brief already said paste was a fallback. Paste now stays as a demo under **Check something else**.
 
 ## The new direction
 
-Spec 003 (Gmail-first home, merged in [#21](https://github.com/paula-strunz/kill-scam/pull/21)):
+Spec 003, merged in [#21](https://github.com/paula-strunz/kill-scam/pull/21):
 
-1. A family helper opens Kill Scam on the parent's device and clicks **Connect Gmail** once.
-2. The watcher is spec'd to run the same five checks on new inbox mail. It is not live.
-3. A likely scam gets one red **Likely scam** label in Gmail. The mail stays in the inbox.
-4. When the checks are unsure, Kill Scam adds no label.
+1. A helper clicks **Connect Gmail** once on the parent's device.
+2. The watcher will run five checks on new inbox mail. It is not live.
+3. A likely scam gets one red **Likely scam** label and stays in the inbox.
+4. Unsure checks add no label.
 
-Kill Scam never sends, deletes, archives, or moves mail. On 9 Oct 2026 I approved Gmail's "modify" permission for one use: adding that label. The spec requires tests proving that send, delete, and trash calls get refused.
+Kill Scam never sends, deletes, archives, or moves mail. On 9 Oct 2026 I approved Gmail's modify permission only to add that label. Tests must refuse send, delete, and trash.
 
 ## Warning screen
 
-Spec 004 (merged in [#20](https://github.com/paula-strunz/kill-scam/pull/20)) is one calm warning, like a browser "Dangerous site" page. One headline. One sentence that names the sender, such as "The email from 'La Banque Postale' may be trying to take your password." One **Don't reply** button. A quiet **This is wrong** link. It never shows a score, and the message body is never on the screen. Today it opens after a paste. Later it will open from a labeled email.
+Spec 004, merged in [#20](https://github.com/paula-strunz/kill-scam/pull/20), is one calm page, like a browser "Dangerous site" warning. Headline: **Looks okay**, **Not sure**, or **Likely scam**. One sentence names the sender, for example "The email from 'La Banque Postale' may be trying to take your password." One **Don't reply** button. A quiet **This is wrong** link. No score, and the message body stays off the screen. It opens after a paste today, and from a labeled email later.
 
 ## The five checks
 
-Each message goes through the same five checks: what it wants and which pressure trick it uses, who it claims to be (the real address, not the display name), web addresses read as text only, known scam patterns, then a verdict. The warning screen shows that verdict as Looks okay, Not sure, or Likely scam.
+What it wants, who it claims to be (the real address), web addresses as text only, known scam patterns, then the verdict above.
 
 ## How I evaluate it
 
-France golden eval fixtures ([#14](https://github.com/paula-strunz/kill-scam/pull/14)): 21 made-up messages on `main`, 11 scams and 10 normal ones. `python -m kill_scam.evals` counts missed scams and false alarms with no API keys. CI runs Ruff and pytest on every pull request, with 65 tests passing.
+21 made-up messages ([#14](https://github.com/paula-strunz/kill-scam/pull/14)): 11 scams, 10 normal. `python -m kill_scam.evals` counts missed scams and false alarms, with no API keys. CI runs Ruff and pytest. 66 tests pass.
 
 ## Status
 
 | Piece | Status |
 | --- | --- |
 | Five checks, paste demo, warning screen | On `main` |
-| Spec 003, plan, and tasks | On `main` ([#21](https://github.com/paula-strunz/kill-scam/pull/21), [#22](https://github.com/paula-strunz/kill-scam/pull/22)) |
-| Gmail watcher and labeling | Spec'd and in progress, not live. Going live waits on the Google sign-in setup |
+| Spec 003, plan, and tasks | On `main` ([#22](https://github.com/paula-strunz/kill-scam/pull/22)) |
+| Gmail watcher and labeling | Not live. It waits on Google sign-in |
 
 ## Lessons
 
-- **PRD first.** My PRD already said paste was not the main door. I should have built from it.
-- **Users break builder assumptions.** Paste was easy to build and demo. My family would never use it.
-- **Spec gates pay off.** I approve each spec, plan, and task list before any code, and agents never merge without my yes. That gate stopped a wrong batch merge.
+I approve each spec, plan, and task list before code. Agents do not merge without my yes.
 
 ## Links
 
-- https://github.com/paula-strunz/kill-scam
 - [`PRD.md`](PRD.md) · [`../specs/003-gmail-first-home.md`](../specs/003-gmail-first-home.md) · [`../specs/004-warning-screen.md`](../specs/004-warning-screen.md) · [`../evals/fixtures.json`](../evals/fixtures.json)
 
 *Paula Struncova · AI Product Manager · Bordeaux*

@@ -65,7 +65,7 @@ Kill Scam is a visible checklist agent, not a magic “feels sketchy” guess.
 2. **Identity** — Who they claim to be vs the real address. Official domain from a known list / lookup. Never trust the display name.
 3. **Links** — Inspect the registered domain only (lookalikes, extra words). Do **not** open the destination page.
 4. **Campaigns** — Check current official warnings (cybermalveillance.gouv.fr, service-public, CISA, FTC). If search is down, continue and lower confidence.
-5. **Verdict** — Looks OK / Be careful / Likely a scam, with evidence, plus what to do (don’t click; open the real app yourself; report email via signal-spam.fr).
+5. **Verdict** — Looks okay / Not sure / Likely scam, with evidence, plus what to do (don’t click; open the real app yourself; report email via signal-spam.fr).
 
 Arize traces each step. Evals score: missed scam, false alarm, and whether the steps actually ran. Golden set must include lookalike domains and a legitimate school/admin mail.
 

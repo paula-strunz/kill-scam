@@ -19,7 +19,7 @@ Check something else
 paste one sample message
         |
         v
-Likely a scam + five steps
+Likely scam
 ```
 
 The secret file in this repo is `.env.example` (there is no `.env.template`). It lists Google and OpenAI names. **Path B does not need those filled in.**
@@ -103,7 +103,7 @@ You do **not** add this URL to Google Cloud for Path B. There is no OAuth redire
 
 ## 6. Smoke-test with one fixture
 
-Use fixture **`scam-fake-bank`** from [`evals/fixtures.json`](../evals/fixtures.json). It is synthetic. It is not a real bank and not a real person. The checklist should land on **Likely a scam**.
+Use fixture **`scam-fake-bank`** from [`evals/fixtures.json`](../evals/fixtures.json). It is synthetic. It is not a real bank and not a real person. The warning should say **Likely scam**.
 
 1. On the live site, open **Check something else**.
 2. Paste this text (the `message` for `scam-fake-bank`):
@@ -120,8 +120,8 @@ We detected unusual activity. Confirm your password and card number at http://na
 
 **Pass looks like this:**
 
-- A verdict of **Likely a scam** (the screen may say **Likely a scam — do not click**).
-- Five checks you can see (what it wants, who it claims to be, web addresses, known patterns, verdict).
+- The page shows **Likely scam**, one line that names the sender, and **Don't reply**.
+- The sample message body is not on the screen.
 - Connect Gmail still says it is not set up. Paste still returned a verdict.
 - The page still says this is a helper, not a guarantee.
 

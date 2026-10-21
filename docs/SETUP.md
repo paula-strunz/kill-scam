@@ -205,7 +205,7 @@ Then add `https://YOUR-APP.fly.dev` (or your custom domain) as an authorized red
 ## 3. Verify
 
 - [ ] Connect Gmail works for a test user (Paula or invited family).
-- [ ] A lookalike / suspicious mail gets **Likely a scam** or **Be careful**, with the five steps visible.
+- [ ] A lookalike / suspicious mail gets **Likely scam** or **Not sure**, with the five steps visible.
 - [ ] A normal mail (school, newsletter, real bank you already trust) is **not** called a scam.
 - [ ] The app never offers to send or delete mail, and Gmail still looks unchanged after a check.
 
