@@ -1,0 +1,184 @@
+{
+  "name": "kill-scam-003-label-threshold",
+  "description": "Synthetic fixtures for spec 003 Gmail 'Likely scam' label threshold. Label only when gold_verdict is likely_scam; suspicious and ok must not get the label. Fictional senders/subjects/bodies only (example.com / example.fr). No real people or inboxes. Shaped like evals/fixtures.json (id, message, gold_label, gold_verdict, category, notes).",
+  "version": 1,
+  "label_field": "gold_label",
+  "input_field": "message",
+  "output_field": "gold_verdict",
+  "labels": [
+    "scam",
+    "ham"
+  ],
+  "verdicts": [
+    "ok",
+    "suspicious",
+    "likely_scam"
+  ],
+  "metrics": [
+    "missed_scam",
+    "false_alarm"
+  ],
+  "gmail_label_rule": "Add 'Likely scam' only when verdict is likely_scam; skip otherwise.",
+  "examples": [
+    {
+      "id": "scam-hacked-contact-account",
+      "category": "hacked_contact",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Hacked-contact account: familiar display name, new odd domain, urgent wire ask. Expect Gmail label.",
+      "message": "From: Camille Exemple <camille.exemple@mail-secure.example.com>\nSubject: Need a quick favor — please do not call\n\nHey, it is Camille. My phone died and I am writing from a backup address. I am stuck abroad and need 850 EUR wired today to this account: IBAN FR76 EXAMPLE 0000 0000 0000 000. Please send it and do not call anyone until I am back online. Confirm at https://mail-secure.example.com/pay"
+    },
+    {
+      "id": "scam-fr-laposte-parcel",
+      "category": "parcel_lookalike",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Fake La Poste parcel fee on example.fr. Expect Gmail label.",
+      "message": "From: La Poste Suivi <noreply@laposte-suivi.example.fr>\nSubject: Colis bloqué — frais de 1,99 €\n\nVotre colis La Poste n'a pas pu être livré. Des frais de douane de 1,99 € restent à régler. Payez dans les 12 heures sur https://laposte-suivi.example.fr/paiement sinon le colis sera retourné."
+    },
+    {
+      "id": "scam-fr-cpf-formation",
+      "category": "authority_cpf",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Fake CPF / formation rights claim with login. Expect Gmail label.",
+      "message": "From: Mon Compte Formation <alerte@cpf-moncompte.example.fr>\nSubject: Vos droits CPF expirent ce soir\n\nBonjour, 2 340 € de droits CPF seront perdus aujourd'hui. Connectez-vous immédiatement et validez votre formation sur https://cpf-moncompte.example.fr/connexion avec votre numéro de sécurité sociale sinon le compte sera clôturé."
+    },
+    {
+      "id": "scam-fr-ameli-remboursement",
+      "category": "authority_ameli",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Fake Ameli refund that harvests bank login. Expect Gmail label.",
+      "message": "From: Ameli Assurance Maladie <remboursement@ameli-espace.example.fr>\nSubject: Remboursement de 214,60 € en attente\n\nVotre remboursement Ameli est bloqué. Confirmez votre identité et votre RIB sur https://ameli-espace.example.fr/remboursement dans l'heure. Sans action, le versement sera annulé définitivement."
+    },
+    {
+      "id": "scam-fr-banque-phishing",
+      "category": "fake_bank",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Fake French bank freeze threat with lookalike example.fr login. Expect Gmail label.",
+      "message": "From: Banque Exemple Sécurité <alertes@banque-exemple-secure.example.fr>\nSubject: Compte suspendu — action requise\n\nNous avons détecté un paiement suspect de 1 280 €. Confirmez votre mot de passe et le code reçu par SMS sur https://banque-exemple-secure.example.fr/login sous 15 minutes ou votre compte sera définitivement bloqué."
+    },
+    {
+      "id": "scam-gift-card-tax",
+      "category": "payment_pressure",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Tax-office tone demanding gift cards. Expect Gmail label.",
+      "message": "From: Example Tax Recovery <collect@tax-recovery.example.com>\nSubject: Immediate payment required\n\nYou owe 1,920 EUR in unpaid tax. Pay today with store gift cards only. Do not tell family. Reply with photos of the card codes to this email or enforcement officers will visit within 24 hours. Details: https://tax-recovery.example.com/pay"
+    },
+    {
+      "id": "scam-credential-mailbox-full",
+      "category": "credential_theft",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Mailbox-full lure asking for password and OTP. Expect Gmail label.",
+      "message": "From: Example Mail Admin <admin@mailbox-quota.example.com>\nSubject: Your mailbox will be deleted tonight\n\nStorage is at 100%. Reply with your email password and the 6-digit code we just sent, or sign in at https://mailbox-quota.example.com/unlock, or all messages will be permanently erased in 2 hours."
+    },
+    {
+      "id": "scam-prize-wire-fee",
+      "category": "too_good_to_be_true",
+      "gold_label": "scam",
+      "gold_verdict": "likely_scam",
+      "notes": "Prize that requires a wire fee and account login. Expect Gmail label.",
+      "message": "From: Harbor Prize Desk <claim@harbor-prize.example.com>\nSubject: You won 3,500 EUR — claim today\n\nCongratulations! You were selected for a 3,500 EUR Harbor Store prize. Pay a 59 EUR release fee by wire and enter your banking login at https://harbor-prize.example.com/claim before midnight or the prize expires."
+    },
+    {
+      "id": "suspicious-vague-account-notice",
+      "category": "vague_urgency",
+      "gold_label": "ham",
+      "gold_verdict": "suspicious",
+      "notes": "Mild urgency, no payment, no credential ask, no trap link. Unsure → no Gmail label.",
+      "message": "From: Example Services Desk <notice@services-desk.example.com>\nSubject: Please review your account settings\n\nHello, we noticed a change on your profile earlier this week. If this was you, no further steps are needed. You can review settings in the app you already use. We will not ask for a password in email."
+    },
+    {
+      "id": "suspicious-odd-newsletter-domain",
+      "category": "odd_sender",
+      "gold_label": "ham",
+      "gold_verdict": "suspicious",
+      "notes": "Newsletter-like copy from an odd but non-trap example.com sender. Unsure → no Gmail label.",
+      "message": "From: Weekly Tips Digest <editor@tips-digest-mail.example.com>\nSubject: Three quiet habits for the weekend\n\nThanks for reading. This week: a short walk, a water reminder, and one offline hour. No purchase required. Unsubscribe anytime by replying STOP."
+    },
+    {
+      "id": "suspicious-forwarded-warning",
+      "category": "forwarded_rumor",
+      "gold_label": "ham",
+      "gold_verdict": "suspicious",
+      "notes": "Forwarded scare tip without a concrete ask or login. Unsure → no Gmail label.",
+      "message": "From: Alex Example <alex.example@mail.example.com>\nSubject: Fwd: be careful with bank emails\n\nSharing what a neighbor told me: some fake bank messages are going around. I am not asking you to click or pay anything. Just keep an eye out this week."
+    },
+    {
+      "id": "suspicious-fr-rdv-incomplete",
+      "category": "incomplete_admin",
+      "gold_label": "ham",
+      "gold_verdict": "suspicious",
+      "notes": "French admin tone with mild pressure but no link, fee, or code. Unsure → no Gmail label.",
+      "message": "From: Guichet Exemple <accueil@guichet-exemple.example.fr>\nSubject: Dossier à compléter\n\nBonjour, votre dossier administratif semble incomplet. Passez au guichet quand vous pouvez, idéalement cette semaine. Aucun paiement en ligne n'est demandé dans ce message."
+    },
+    {
+      "id": "suspicious-shipping-delay-no-pay",
+      "category": "commerce_odd",
+      "gold_label": "ham",
+      "gold_verdict": "suspicious",
+      "notes": "Delivery delay wording without fee or credential harvest. Unsure → no Gmail label.",
+      "message": "From: Example Parcel Desk <updates@parcel-desk.example.com>\nSubject: Delivery running a day late\n\nYour order from Monday is one day behind schedule because of weather. No payment is due. Track it in the shop account you already have; we will not send password reset links in this note."
+    },
+    {
+      "id": "suspicious-job-lead-soft",
+      "category": "unsolicited_offer",
+      "gold_label": "ham",
+      "gold_verdict": "suspicious",
+      "notes": "Unsolicited soft job lead without fee or credentials. Unsure → no Gmail label.",
+      "message": "From: Example Careers Desk <roles@careers-desk.example.com>\nSubject: Optional chat about a part-time role\n\nWe found your public profile and wondered if you want a short call next week about a part-time desk role. No fee to apply. Reply only if interested; ignore this if it is not relevant."
+    },
+    {
+      "id": "safe-fr-bank-releve",
+      "category": "bank_ham",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Real-looking French bank statement notice on example.fr. No ask → no Gmail label.",
+      "message": "From: Banque Exemple <ne-pas-repondre@banque-exemple.example.fr>\nSubject: Votre relevé de septembre est disponible\n\nBonjour, votre relevé du mois est disponible dans votre espace client habituel. Aucune action n'est demandée. Nous ne vous demanderons jamais un mot de passe, un code SMS ou un RIB par email."
+    },
+    {
+      "id": "safe-fr-delivery-notice",
+      "category": "delivery_ham",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Real-looking French delivery notice without fee or login. No Gmail label.",
+      "message": "From: Livraison Exemple <suivi@livraison-exemple.example.fr>\nSubject: Votre colis sera livré demain\n\nBonjour, le colis commandé mardi arrivera demain entre 10h et 13h. Aucune somme n'est due. Présentez simplement une pièce d'identité au livreur. Pas de lien de paiement dans ce message."
+    },
+    {
+      "id": "safe-school-picnic",
+      "category": "newsletter",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Ordinary school reminder. No Gmail label.",
+      "message": "From: Maple Example School Office <office@maple-school.example.com>\nSubject: Friday picnic reminder\n\nHello families, the picnic is still at 12:00 on the playground. Bring a blanket if you like. No action needed if you already signed the paper form last week."
+    },
+    {
+      "id": "safe-dentist-reminder",
+      "category": "appointment",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Appointment reminder without login or payment. No Gmail label.",
+      "message": "From: Cedar Example Dental <front-desk@cedar-dental.example.com>\nSubject: Cleaning on Tuesday at 10:30\n\nHi Jordan Example, this is a reminder that your cleaning is Tuesday at 10:30. If you need to change it, call the office number on your appointment card. See you then."
+    },
+    {
+      "id": "safe-dinner-plan",
+      "category": "personal",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Friend confirming dinner. No Gmail label.",
+      "message": "From: Sam Example <sam.example@mail.example.com>\nSubject: Tacos at 7?\n\nHey, still good for tacos at 7? I will grab a table by the window. No need to bring anything besides yourself."
+    },
+    {
+      "id": "safe-order-update",
+      "category": "commerce",
+      "gold_label": "ham",
+      "gold_verdict": "ok",
+      "notes": "Normal order update for something already bought. No Gmail label.",
+      "message": "From: Harbor Example Books <orders@harbor-books.example.com>\nSubject: Your book is on the way\n\nThe cookbook you ordered on Monday left the shop today. You can pick it up at the front desk with your name. No payment is due."
+    }
+  ]
+}
