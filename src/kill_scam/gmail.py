@@ -1,4 +1,7 @@
-"""Read-only Gmail helper. Never send, never delete, never write to the mailbox."""
+"""Gmail helper. The only mailbox change allowed is adding the Likely scam label.
+
+Never send, never delete, never trash, never archive, never move, never draft.
+"""
 
 from __future__ import annotations
 
@@ -14,7 +17,7 @@ from typing import Any
 
 from kill_scam.config import (
     GMAIL_LOOKBACK_DAYS,
-    GMAIL_READONLY_SCOPE,
+    GMAIL_MODIFY_SCOPE,
     GMAIL_SCAN_LIMIT,
     gmail_client_id,
     gmail_client_secret,
@@ -27,17 +30,34 @@ from kill_scam.config import (
 
 logger = logging.getLogger("kill_scam")
 
-# Hard rule: this app may only request read-only Gmail access.
-SCOPES = (GMAIL_READONLY_SCOPE,)
+# Hard rule: request modify only so we can add one label. Every other write is refused in code.
+SCOPES = (GMAIL_MODIFY_SCOPE,)
+LIKELY_SCAM_LABEL_NAME = "Likely scam"
+# Real Gmail user-label ids look like Label_42. System ids (INBOX, TRASH, SPAM) never match.
+_USER_LABEL_ID = re.compile(r"^Label_[0-9]+$")
 FORBIDDEN_SCOPE_FRAGMENTS = (
     "gmail.send",
     "gmail.compose",
-    "gmail.modify",
     "gmail.insert",
     "gmail.settings",
+    "mail.google.com",
 )
-# Gmail API calls this module is allowed to make. Anything else is a bug.
-ALLOWED_USER_METHODS = frozenset({"list", "get"})
+# Exact Gmail methods this app may run. Anything else raises GmailError.
+ALLOWED_GMAIL_CALLS = frozenset(
+    {
+        ("messages", "list"),
+        ("messages", "get"),
+        ("messages", "modify"),
+        ("labels", "list"),
+        ("labels", "create"),
+    }
+)
+_MODIFY_BODY_KEYS = frozenset({"addLabelIds", "removeLabelIds"})
+_LABEL_CREATE_KEYS = frozenset(
+    {"name", "color", "messageListVisibility", "labelListVisibility"}
+)
+_REFUSE_CALL = "Kill Scam refuses any Gmail call except adding the Likely scam label."
+_REFUSE_SCOPE = "Kill Scam refuses any Gmail permission that can send or change mail."
 NOT_CONFIGURED_HEADLINE = "Connect Gmail isn’t set up yet."
 NOT_CONFIGURED_DETAIL = (
     "This copy is for Paula and invited family testers. "
@@ -80,13 +100,16 @@ class GmailMessage:
         )
 
 
-def assert_readonly_scopes(scopes: tuple[str, ...] = SCOPES) -> None:
+def assert_allowed_scopes(scopes: tuple[str, ...] = SCOPES) -> None:
+    """Require gmail.modify, and refuse send, compose, insert, settings, or full mail access."""
     joined = " ".join(scopes).lower()
     for fragment in FORBIDDEN_SCOPE_FRAGMENTS:
         if fragment in joined:
-            raise GmailError("Kill Scam refuses any Gmail permission that can send or change mail.")
-    if GMAIL_READONLY_SCOPE not in scopes:
-        raise GmailError("Kill Scam only connects to Gmail with read-only permission.")
+            raise GmailError(_REFUSE_SCOPE)
+    if GMAIL_MODIFY_SCOPE not in scopes:
+        raise GmailError(
+            "Kill Scam only connects to Gmail with permission to add the Likely scam label."
+        )
 
 
 def is_configured() -> bool:
@@ -105,7 +128,7 @@ def setup_status() -> GmailSetupStatus:
         )
     return GmailSetupStatus(
         configured=True,
-        headline="Connect Gmail (read-only)",
+        headline="Connect Gmail",
         detail=(
             "This reads recent inbox mail. It only adds a Likely scam label. "
             "It never sends or deletes mail."
@@ -124,7 +147,7 @@ def authorization_url(redirect_uri: str | None = None) -> tuple[str, str]:
     """Return (Google sign-in URL, CSRF state). Does not talk to the mailbox."""
     if not is_configured():
         raise GmailError(NOT_CONFIGURED_HEADLINE)
-    assert_readonly_scopes()
+    assert_allowed_scopes()
     try:
         from google_auth_oauthlib.flow import Flow
     except ImportError as exc:
@@ -139,7 +162,7 @@ def authorization_url(redirect_uri: str | None = None) -> tuple[str, str]:
         include_granted_scopes="false",
     )
     _remember_oauth_state(state)
-    logger.info("Gmail OAuth URL created (read-only).")
+    logger.info("Gmail OAuth URL created (modify, label only).")
     return url, state
 
 
@@ -149,14 +172,14 @@ def finish_connect(
     expected_state: str = "",
     redirect_uri: str | None = None,
 ) -> dict[str, Any]:
-    """Exchange the one-time code for a read-only token. Never requests write scopes."""
+    """Exchange the one-time code for a token. Requests gmail.modify and nothing broader."""
     if not is_configured():
         raise GmailError(NOT_CONFIGURED_HEADLINE)
     if not (code or "").strip():
         raise GmailError("Google sign-in did not finish. Try Connect Gmail again.")
     if not _state_is_known(state, expected_state):
         raise GmailError("Sign-in could not be verified. Try Connect Gmail again.")
-    assert_readonly_scopes()
+    assert_allowed_scopes()
     try:
         from google_auth_oauthlib.flow import Flow
     except ImportError as exc:
@@ -176,13 +199,13 @@ def finish_connect(
 
     creds = flow.credentials
     granted = tuple(creds.scopes or SCOPES)
-    assert_readonly_scopes(granted if granted else SCOPES)
+    assert_allowed_scopes(granted if granted else SCOPES)
     info = json.loads(creds.to_json())
     if persist_token_to_disk():
         gmail_token_path().write_text(json.dumps(info), encoding="utf-8")
-        logger.info("Gmail connected with read-only access. Token stored locally.")
+        logger.info("Gmail connected with label-only access. Token stored locally.")
     else:
-        logger.info("Gmail connected with read-only access. Token kept in this browser session.")
+        logger.info("Gmail connected with label-only access. Token kept in this browser session.")
     _forget_oauth_state(state)
     return info
 
@@ -217,13 +240,15 @@ def list_recent_messages(
     limit: int = GMAIL_SCAN_LIMIT,
 ) -> list[GmailMessage]:
     """Fetch recent inbox headers and snippets. Never sends."""
-    assert_readonly_scopes()
+    assert_allowed_scopes()
     service = _service(token_info)
     cap = max(1, min(limit, GMAIL_SCAN_LIMIT))
     query = f"newer_than:{GMAIL_LOOKBACK_DAYS}d"
     try:
-        listed = _readonly_call(
-            service.users().messages().list,
+        listed = gmail_call(
+            service,
+            "messages",
+            "list",
             userId="me",
             maxResults=cap,
             labelIds=["INBOX"],
@@ -243,8 +268,10 @@ def list_recent_messages(
         if not msg_id:
             continue
         try:
-            raw = _readonly_call(
-                service.users().messages().get,
+            raw = gmail_call(
+                service,
+                "messages",
+                "get",
                 userId="me",
                 id=msg_id,
                 format="metadata",
@@ -261,11 +288,13 @@ def get_message(message_id: str, token_info: dict[str, Any] | None = None) -> Gm
     """Read one message for the checklist. Never sends, never deletes."""
     if not (message_id or "").strip():
         raise GmailError("That message could not be opened.")
-    assert_readonly_scopes()
+    assert_allowed_scopes()
     service = _service(token_info)
     try:
-        raw = _readonly_call(
-            service.users().messages().get,
+        raw = gmail_call(
+            service,
+            "messages",
+            "get",
             userId="me",
             id=message_id.strip(),
             format="full",
@@ -343,20 +372,85 @@ def _decode_b64(data: str) -> str:
         return ""
 
 
-def _readonly_call(method: Any, **kwargs: Any) -> dict[str, Any]:
-    """Run a Gmail users.messages list/get call. Refuse anything else."""
-    name = getattr(method, "__name__", "") or type(method).__name__
-    method_id = str(getattr(method, "methodId", "") or getattr(method, "_methodId", "") or "")
-    blob = f"{name} {method_id}".lower()
-    if any(fragment in blob for fragment in ("send", "delete", "modify", "insert", "trash")):
-        raise GmailError("Kill Scam refuses any Gmail call that can send or change mail.")
-    # googleapiclient Resource methods are bound objects; allow list/get only.
-    allowed = any(token in blob for token in ALLOWED_USER_METHODS) or not blob.strip()
-    if blob.strip() and not allowed:
-        # Still allow unnamed Resource methods if kwargs look like a read.
-        if kwargs.get("format") not in {None, "metadata", "full", "minimal"} and "maxResults" not in kwargs:
-            raise GmailError("Kill Scam refuses any Gmail call that can send or change mail.")
-    return method(**kwargs).execute()
+def gmail_call(
+    service: Any,
+    resource: str,
+    method: str,
+    *,
+    label_id: str = "",
+    **kwargs: Any,
+) -> dict[str, Any]:
+    """Run one allowlisted Gmail call.
+
+    ``messages.modify`` is accepted only when ``label_id`` is our Likely scam
+    label and the body adds that id alone, with an empty remove list.
+    The underlying method is not called when the guard refuses.
+    """
+    key = (resource, method)
+    if key not in ALLOWED_GMAIL_CALLS:
+        raise GmailError(_REFUSE_CALL)
+    if key == ("messages", "modify"):
+        _assert_label_only_modify(kwargs.get("body"), label_id)
+        _reject_unknown_params(kwargs, {"userId", "id", "body"})
+    elif key == ("labels", "create"):
+        _assert_likely_scam_create(kwargs.get("body"))
+        _reject_unknown_params(kwargs, {"userId", "body"})
+    collection = _users_resource(service, resource)
+    result = getattr(collection, method)(**kwargs).execute()
+    if not isinstance(result, dict):
+        raise GmailError("Gmail returned an unexpected response.")
+    return result
+
+
+def add_likely_scam_label(service: Any, message_id: str, label_id: str) -> dict[str, Any]:
+    """Add the Likely scam label and leave every other label, including INBOX, alone."""
+    if not (message_id or "").strip():
+        raise GmailError("That message could not be opened.")
+    return gmail_call(
+        service,
+        "messages",
+        "modify",
+        label_id=label_id,
+        userId="me",
+        id=message_id.strip(),
+        body={"addLabelIds": [label_id], "removeLabelIds": []},
+    )
+
+
+def _assert_label_only_modify(body: Any, label_id: str) -> None:
+    if not isinstance(body, dict) or set(body) - _MODIFY_BODY_KEYS:
+        raise GmailError(_REFUSE_CALL)
+    if not _USER_LABEL_ID.fullmatch(label_id or ""):
+        raise GmailError(_REFUSE_CALL)
+    remove = body.get("removeLabelIds", [])
+    if not isinstance(remove, list) or remove:
+        raise GmailError(_REFUSE_CALL)
+    if body.get("addLabelIds") != [label_id]:
+        raise GmailError(_REFUSE_CALL)
+
+
+def _assert_likely_scam_create(body: Any) -> None:
+    if not isinstance(body, dict) or set(body) - _LABEL_CREATE_KEYS:
+        raise GmailError(_REFUSE_CALL)
+    if body.get("name") != LIKELY_SCAM_LABEL_NAME:
+        raise GmailError(_REFUSE_CALL)
+    visibility = body.get("messageListVisibility")
+    if visibility is not None and visibility != "show":
+        raise GmailError(_REFUSE_CALL)
+
+
+def _reject_unknown_params(kwargs: dict[str, Any], allowed: set[str]) -> None:
+    if set(kwargs) - allowed:
+        raise GmailError(_REFUSE_CALL)
+
+
+def _users_resource(service: Any, resource: str) -> Any:
+    users = service.users()
+    if resource == "messages":
+        return users.messages()
+    if resource == "labels":
+        return users.labels()
+    raise GmailError(_REFUSE_CALL)
 
 
 def _client_config(redirect: str) -> dict[str, Any]:

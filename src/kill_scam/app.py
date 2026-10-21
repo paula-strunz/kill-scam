@@ -179,7 +179,7 @@ def _gmail_home() -> None:
                     st.session_state["oauth_auth_url"] = url
                     st.session_state["oauth_state"] = state
                 st.link_button(
-                    "Connect Gmail (read-only)",
+                    "Connect Gmail",
                     st.session_state["oauth_auth_url"],
                     type="primary",
                     use_container_width=True,

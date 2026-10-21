@@ -4,15 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from kill_scam.config import GMAIL_READONLY_SCOPE, gmail_is_configured, gmail_redirect_uri
+from kill_scam.config import GMAIL_MODIFY_SCOPE, gmail_is_configured, gmail_redirect_uri
 from kill_scam.gmail import (
     FORBIDDEN_SCOPE_FRAGMENTS,
     NOT_CONFIGURED_HEADLINE,
     SCOPES,
     GmailError,
     GmailMessage,
-    _readonly_call,
-    assert_readonly_scopes,
+    assert_allowed_scopes,
     authorization_url,
     extract_plain_text,
     finish_connect,
@@ -25,17 +24,18 @@ from kill_scam.gmail import (
 GMAIL_SOURCE = Path(__file__).resolve().parents[1] / "src" / "kill_scam" / "gmail.py"
 
 
-def test_gmail_scope_is_readonly_only() -> None:
-    assert SCOPES == (GMAIL_READONLY_SCOPE,)
+def test_gmail_scope_is_modify_only() -> None:
+    assert SCOPES == (GMAIL_MODIFY_SCOPE,)
     joined = " ".join(SCOPES).lower()
     for fragment in FORBIDDEN_SCOPE_FRAGMENTS:
         assert fragment not in joined
-    assert_readonly_scopes()
+    assert "gmail.modify" in joined
+    assert_allowed_scopes()
 
 
 def test_gmail_refuses_send_scopes() -> None:
     with pytest.raises(GmailError, match="refuses"):
-        assert_readonly_scopes(("https://www.googleapis.com/auth/gmail.send",))
+        assert_allowed_scopes(("https://www.googleapis.com/auth/gmail.send",))
 
 
 def test_gmail_helper_source_cannot_send() -> None:
@@ -43,14 +43,18 @@ def test_gmail_helper_source_cannot_send() -> None:
     for needle in (
         "messages().send",
         "messages().delete",
-        "messages().modify",
+        "messages().trash",
         "messages().insert",
+        "messages().batchDelete",
+        "messages().untrash",
         "users().drafts",
         ".send(",
+        ".trash(",
+        ".delete(",
     ):
         assert needle not in source
-    assert "GMAIL_READONLY_SCOPE" in source
-    assert "Never send" in source or "never send" in source.lower()
+    assert "GMAIL_MODIFY_SCOPE" in source
+    assert "never send" in source.lower()
 
 
 def test_gmail_hidden_without_client_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -147,18 +151,6 @@ def test_extract_plain_text_prefers_text_plain() -> None:
         ],
     }
     assert extract_plain_text(payload) == "Hello family. No payment."
-
-
-def test_readonly_call_refuses_send_method() -> None:
-    class FakeSend:
-        __name__ = "send"
-        methodId = "gmail.users.messages.send"
-
-        def __call__(self, **_kwargs):
-            raise AssertionError("send must not run")
-
-    with pytest.raises(GmailError, match="refuses"):
-        _readonly_call(FakeSend(), userId="me")
 
 
 def test_extract_plain_text_strips_html_when_needed() -> None:
