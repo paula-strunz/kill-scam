@@ -12,7 +12,7 @@ Case study: [docs/CASE_STUDY.md](docs/CASE_STUDY.md). Demo script: [docs/DEMO_SC
 
 **Connect Gmail** is still the product door in the [PRD](docs/PRD.md). It needs a Google OAuth client and host env vars ([docs/SETUP.md](docs/SETUP.md)). Until those are set, the app says **Connect Gmail isn’t set up yet**. Paste still works.
 
-It only adds one **Likely scam** label in Gmail. It **never sends** or **deletes** mail. It never opens a suspicious website.
+It reads mail and adds one red **Likely scam** label. It never sends, deletes, archives, or moves mail. It never opens a suspicious website.
 
 ```text
 Open Kill Scam
@@ -30,7 +30,7 @@ Five visible steps
       +--> 5. Looks okay / Not sure / Likely scam
 ```
 
-Connect Gmail is the intended inbox path once OAuth is configured: last 7 days, up to 20 messages, same five checks. The only mailbox change is one **Likely scam** label.
+Connect Gmail is the intended inbox path once OAuth is configured: last 7 days, up to 20 messages, same five checks. The only mailbox change is one red **Likely scam** label.
 
 ## Who it is for
 
@@ -64,7 +64,7 @@ Kill Scam  --x-->      archive, move, or drafts
 Kill Scam  --x-->      open the phishing page
 ```
 
-The code on main still requests `gmail.readonly` only. [Spec 003](specs/003-gmail-first-home.md) moves to `gmail.modify` for that one label.
+Connect asks Google for `gmail.modify` so it can add that one red label. The code refuses every other Gmail change. Spec: [003](specs/003-gmail-first-home.md).
 
 ## Testing-mode Gmail (Paula + family)
 

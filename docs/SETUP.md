@@ -1,8 +1,8 @@
-# Kill Scam — OAuth + hosting setup
+# Kill Scam: OAuth and hosting setup
 
 Do this **after** Gmail V0 ([PR #6](https://github.com/paula-strunz/kill-scam/pull/6)) is merged into `dev`. This file is a checklist, not a code change.
 
-V0 is: **connect Gmail (read-only)**, scan recent mail, run the **five-step checklist**. The app **never sends** and **never deletes** mail.
+V0 is: **connect Gmail**, read recent mail, and run the **five-step checklist**. The app adds one red **Likely scam** label. It never sends, deletes, archives, or moves mail.
 
 Google will not verify a public app yet. V0 is **Paula + allowlisted family** on an OAuth consent screen in **testing mode**. Strangers on the internet cannot sign in.
 
@@ -57,13 +57,13 @@ You need a Google account (Paula’s). Work in [Google Cloud Console](https://co
 5. User support email: **Paula’s email**.
 6. Developer contact email: the same address is fine.
 
-### Scopes (read-only only)
+### Scopes (one label)
 
 Add **only**:
 
-- `https://www.googleapis.com/auth/gmail.readonly`
+- `https://www.googleapis.com/auth/gmail.modify`
 
-If Google also requires **openid** / **email** / **profile** for the sign-in button, that is OK. Do **not** add anything that can send, delete, or change mail (`gmail.send`, `gmail.modify`, and similar).
+That scope reads mail and adds one red **Likely scam** label. If Google also asks for **openid**, **email**, or **profile** for the sign-in button, that is OK. Leave out send, compose, and full mail access (`gmail.send`, `gmail.compose`, `https://mail.google.com/`).
 
 ### Test users (Paula + family)
 
@@ -87,7 +87,7 @@ Anyone not on this list will be blocked. That is expected.
 
 Google sends the person **back** to Kill Scam after they sign in. The address must match **exactly** (including `http` vs `https` and a trailing slash).
 
-**After Gmail V0 (#6) — this is the intended setup:**
+**After Gmail V0 (#6). This is the intended setup:**
 
 | Where you run the app | Redirect URI to add in Google Cloud | Same value in the app |
 | --- | --- | --- |
@@ -135,7 +135,7 @@ Google warning: app not verified   ← expected
 Advanced → Go to Kill Scam
         |
         v
-Allow read-only Gmail
+Allow Gmail: read mail, add Likely scam
 ```
 
 ---
@@ -170,7 +170,7 @@ Laptop can be closed
 5. In **Environment**, set at least:
    - `GOOGLE_CLIENT_ID`
    - `GOOGLE_CLIENT_SECRET`
-   - `GOOGLE_REDIRECT_URI` — leave a placeholder until you know the public URL, then set it
+   - `GOOGLE_REDIRECT_URI`: leave a placeholder until you know the public URL, then set it
    - `KILL_SCAM_HOSTED` = `1`
    - Optional: `OPENAI_API_KEY`, `ARIZE_API_KEY`, `ARIZE_SPACE_ID`
 6. Deploy. Copy the public URL (looks like `https://kill-scam-xxxx.onrender.com`).
@@ -207,7 +207,7 @@ Then add `https://YOUR-APP.fly.dev` (or your custom domain) as an authorized red
 - [ ] Connect Gmail works for a test user (Paula or invited family).
 - [ ] A lookalike / suspicious mail gets **Likely scam** or **Not sure**, with the five steps visible.
 - [ ] A normal mail (school, newsletter, real bank you already trust) is **not** called a scam.
-- [ ] The app never offers to send or delete mail, and Gmail still looks unchanged after a check.
+- [ ] The app never offers to send, delete, archive, or move mail. A likely scam gets one red **Likely scam** label and stays in the inbox.
 
 ---
 
@@ -215,4 +215,4 @@ Then add `https://YOUR-APP.fly.dev` (or your custom domain) as an authorized red
 
 - Merging [PR #6](https://github.com/paula-strunz/kill-scam/pull/6) (needs a human glance; this docs PR does not merge it).
 - Google **public** verification so anyone on the internet can connect.
-- SMS, auto-delete, or writing to the mailbox.
+- SMS, and sending, deleting, archiving, or moving mail.
